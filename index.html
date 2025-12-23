@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JGUA Cadastro Offline</title>
-   <link rel="manifest" href="manifest.json">
-<script src="app.js" defer></script>
-<style>
+    <link rel="manifest" href="manifest.json">
+    <script src="app.js" defer></script>
+    <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; background: #eceff1; color: #333; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
         .hidden { display: none; }
@@ -92,77 +92,58 @@
             </div>
 
             <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px; margin-top: 20px;">
-    <h3 style="margin-top: 0;">Gerenciar Equipe</h3>
-    <label>Nome do Integrante:</label>
-    <input type="text" id="novo-nome" placeholder="Ex: João Silva">
-    
-    <label>Código de Acesso (Senha):</label>
-    <input type="password" id="novo-codigo" placeholder="Defina uma senha numérica">
-    
-    <label>Perfil do Integrante:</label>
-    <select id="novo-perfil">
-        <option value="CADASTRADOR">CADASTRADOR</option>
-        <option value="VALIDADOR">VALIDADOR</option>
-        <option value="COORDENADOR">COORDENADOR</option>
-        <option value="GESTOR">GESTOR</option>
-    </select>
-    
-    <button class="btn-principal" onclick="criarUsuario()" style="background: #0056b3;">CADASTRAR INTEGRANTE</button>
-</div>
+                <h3 style="margin-top: 0;">Gerenciar Equipe</h3>
+                <label>Nome do Integrante:</label>
+                <input type="text" id="novo-nome" placeholder="Ex: João Silva">
+                <label>Código de Acesso (Senha):</label>
+                <input type="password" id="novo-codigo" placeholder="Defina uma senha numérica">
+                <label>Perfil do Integrante:</label>
+                <select id="novo-perfil">
+                    <option value="CADASTRADOR">CADASTRADOR</option>
+                    <option value="VALIDADOR">VALIDADOR</option>
+                    <option value="COORDENADOR">COORDENADOR</option>
+                    <option value="GESTOR">GESTOR</option>
+                </select>
+                <button class="btn-principal" onclick="criarUsuario()" style="background: #0056b3;">CADASTRAR INTEGRANTE</button>
+            </div>
 
-<button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
-            
             <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
-           <button class="btn-export" id="btnExport" onclick="if(typeof exportarDados === 'function') { exportarDados() } else { alert('O sistema ainda está carregando os dados, aguarde 5 segundos...') }">EXPORTAR BASE (JSON)</button>
+            <button class="btn-export" id="btnExport" onclick="if(typeof exportarDados === 'function') { exportarDados() } else { alert('Aguarde o carregamento...') }">EXPORTAR BASE (JSON)</button>
         </div>
     </div>
 
-       <script>
-      function autenticar() {
-    const cod = document.getElementById('input-codigo').value;
+    <script>
+        function autenticar() {
+            const cod = document.getElementById('input-codigo').value;
+            const tx = db.transaction("usuarios", "readonly");
+            const store = tx.objectStore("usuarios");
+            const consulta = store.get(cod);
 
-    // Acessa a tabela de usuários que criaremos no banco de dados
-    const tx = db.transaction("usuarios", "readonly");
-    const store = tx.objectStore("usuarios");
-    const consulta = store.get(cod);
+            consulta.onsuccess = () => {
+                const usuario = consulta.result;
+                if (usuario) {
+                    document.getElementById('label-perfil').innerText = usuario.perfil;
+                    document.getElementById('secao-login').classList.add('hidden');
+                    document.getElementById('conteudo').classList.remove('hidden');
 
-    consulta.onsuccess = () => {
-        const usuario = consulta.result;
+                    const campoCpf = document.getElementById('cpf');
+                    if (usuario.perfil === "GESTOR") {
+                        campoCpf.type = "text";
+                    } else {
+                        campoCpf.type = "password";
+                        campoCpf.placeholder = "CPF Oculto";
+                    }
 
-        if (usuario) {
-            // Define o perfil na tela
-            document.getElementById('label-perfil').innerText = usuario.perfil;
-            
-            // Esconde login e mostra o sistema
-            document.getElementById('secao-login').classList.add('hidden');
-            document.getElementById('conteudo').classList.remove('hidden');
-
-            // REGRA DO CPF: Só fica visível (text) para GESTOR. 
-            // Para todos os outros (CADASTRADOR, VALIDADOR, COORDENADOR) vira password (bolinhas).
-            const campoCpf = document.getElementById('cpf');
-            if (usuario.perfil === "GESTOR") {
-                campoCpf.type = "text";
-            } else {
-                campoCpf.type = "password";
-                campoCpf.placeholder = "CPF Oculto";
-            }
-
-            // REGRA DE ACESSO: Se for GESTOR ou COORDENADOR, mostra o painel para criar novos usuários
-            if (usuario.perfil === "GESTOR" || usuario.perfil === "COORDENADOR") {
-                // Se você criar uma div com id "painel-admin", ela aparece aqui
-                const painel = document.getElementById('painel-admin');
-                if(painel) painel.classList.remove('hidden');
-            }
-
-        } else {
-            alert("Código de acesso não encontrado!");
+                    if (usuario.perfil === "GESTOR" || usuario.perfil === "COORDENADOR") {
+                        const painel = document.getElementById('painel-admin');
+                        if(painel) painel.classList.remove('hidden');
+                    }
+                } else {
+                    alert("Código de acesso não encontrado!");
+                }
+            };
+            consulta.onerror = () => { alert("Erro ao consultar base de usuários."); };
         }
-    };
-    
-    consulta.onerror = () => {
-        alert("Erro ao consultar base de usuários.");
-    };
-}
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
