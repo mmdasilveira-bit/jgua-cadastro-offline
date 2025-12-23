@@ -11,34 +11,40 @@ request.onsuccess = (e) => { db = e.target.result; console.log("Banco de Dados C
 
 // 2. Busca de CEP Melhorada
 async function buscarCEP() {
+    async function buscarCEP() {
     let campoCep = document.getElementById('cep');
-    let cep = campoCep.value.replace(/\D/g, ''); // Remove hifens e pontos
+    let cep = campoCep.value.replace(/\D/g, ''); // Remove hifens
     
     if (cep.length !== 8) return;
 
-    console.log("Buscando CEP:", cep);
-
     try {
-        // Busca no arquivo de Jaraguá que você subiu
         const response = await fetch('cep_base_jgs.json');
         const baseLocal = await response.json();
         
-        // Procura o CEP na sua lista
-        const encontrado = baseLocal.find(c => c.cep.replace(/\D/g, '') === cep);
+        // Como seu JSON é um dicionário, acessamos direto pela chave:
+        const resultado = baseLocal[cep]; 
 
-        if (encontrado) {
-            console.log("Achou na base local!");
-            preencherCampos(encontrado);
+        if (resultado && resultado.length > 0) {
+            // Pegamos o primeiro item da lista daquele CEP
+            const dados = resultado[0];
+            document.getElementById('logradouro').value = dados.logradouro || '';
+            document.getElementById('bairro').value = dados.bairro || '';
+            document.getElementById('cidade').value = dados.cidade || 'Jaraguá do Sul';
+            document.getElementById('uf').value = dados.uf || 'SC';
+            console.log("Dados preenchidos via base local!");
         } else if (navigator.onLine) {
-            console.log("Não achou local, tentando ViaCEP...");
+            // Se não achou na base local, tenta ViaCEP
             const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
             const dados = await res.json();
-            if (!dados.erro) preencherCampos(dados);
-        } else {
-            alert("CEP não encontrado localmente e você está offline.");
+            if (!dados.erro) {
+                document.getElementById('logradouro').value = dados.logradouro;
+                document.getElementById('bairro').value = dados.bairro;
+                document.getElementById('cidade').value = dados.localidade;
+                document.getElementById('uf').value = dados.uf;
+            }
         }
     } catch (e) {
-        console.error("Erro ao buscar CEP:", e);
+        console.error("Erro na busca:", e);
     }
 }
 
