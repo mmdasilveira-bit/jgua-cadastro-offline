@@ -15,7 +15,7 @@ async function buscarCEP() {
     if (cep.length !== 8) return;
 
     try {
-        const response = await fetch('cep_base.json');
+        const response = await fetch('cep_base_jgs.json');
         const baseLocal = await response.json();
         const encontrado = baseLocal.find(c => c.cep === cep);
 
