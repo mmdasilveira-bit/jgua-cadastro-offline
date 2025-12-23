@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JGUA Cadastro Offline</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
-        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
         .hidden { display: none; }
-        input, select, button { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input, select, button, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { background: #007bff; color: white; font-weight: bold; cursor: pointer; border: none; }
-        .perfil-badge { background: #e2e2e2; padding: 5px; font-size: 0.8em; border-radius: 4px; }
+        .btn-verde { background: #28a745; }
+        .perfil-badge { background: #333; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
     </style>
 </head>
 <body>
@@ -19,56 +20,49 @@
         <h2>JGUA Cadastro</h2>
         
         <div id="secao-login">
-            <p>Digite o código de acesso:</p>
-            <input type="password" id="input-codigo" placeholder="Código (Tente 1234 para Gestor)">
+            <input type="password" id="input-codigo" placeholder="Código de Acesso">
             <button onclick="autenticar()">Entrar</button>
         </div>
 
         <div id="conteudo" class="hidden">
-            <p>Perfil atual: <span id="label-perfil" class="perfil-badge"></span></p>
+            <p>Perfil: <span id="label-perfil" class="perfil-badge"></span></p>
             <hr>
-            <h3>Novo Cadastro</h3>
+            
             <label>Nome:</label>
-            <input type="text" id="nome" placeholder="Nome completo">
+            <input type="text" id="nome">
             
             <label>CPF:</label>
-            <input type="text" id="cpf" placeholder="000.000.000-00">
-            <small id="aviso-cpf" style="color: red;" class="hidden">O CPF ficará oculto para este perfil após salvar.</small>
+            <input type="text" id="cpf">
+
+            <label>CEP (Busca Automática):</label>
+            <input type="text" id="cep" onblur="buscarCEP()" placeholder="00000-000">
+
+            <label>Logradouro:</label>
+            <input type="text" id="logradouro">
+
+            <label>Bairro / Cidade / UF:</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="bairro" placeholder="Bairro">
+                <input type="text" id="cidade" placeholder="Cidade">
+                <input type="text" id="uf" placeholder="UF" style="width: 60px;">
+            </div>
 
             <button onclick="salvar()">Salvar Localmente</button>
-            <button style="background: #28a745;" onclick="listar()">Ver Registros</button>
+            <button class="btn-verde" onclick="alert('Em breve: Lista completa')">Ver Registros</button>
         </div>
     </div>
 
+    <script src="app.js"></script>
     <script>
-        let perfilAtual = "";
-
         function autenticar() {
-            const codigo = document.getElementById('input-codigo').value;
-            const conteudo = document.getElementById('conteudo');
-            const login = document.getElementById('secao-login');
-            const label = document.getElementById('label-perfil');
-
-            // Lógica simples de perfis
-            if(codigo === "1234") perfilAtual = "GESTOR";
-            else if(codigo === "1111") perfilAtual = "CADASTRADOR";
-            else { alert("Código inválido!"); return; }
-
-            label.innerText = perfilAtual;
-            login.classList.add('hidden');
-            conteudo.classList.remove('hidden');
-
-            if(perfilAtual !== "GESTOR") {
-                document.getElementById('aviso-cpf').classList.remove('hidden');
-            }
-        }
-
-        function salvar() {
-            alert("Em breve: Gravando dados no banco offline...");
-        }
-
-        function listar() {
-            alert("Em breve: Listando dados do IndexedDB...");
+            const cod = document.getElementById('input-codigo').value;
+            const perfis = {"1234": "GESTOR", "1111": "CADASTRADOR"};
+            
+            if(perfis[cod]) {
+                document.getElementById('label-perfil').innerText = perfis[cod];
+                document.getElementById('secao-login').classList.add('hidden');
+                document.getElementById('conteudo').classList.remove('hidden');
+            } else { alert("Código incorreto!"); }
         }
     </script>
 </body>
