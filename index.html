@@ -33,9 +33,9 @@
         </div>
 
         <div id="conteudo" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <span id="label-perfil" style="background: #333; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.8em;"></span>
-                <button onclick="location.reload()" style="width: auto; padding: 5px 10px; margin: 0; font-size: 0.8em;">Sair</button>
+                <button onclick="location.reload()" style="width: auto; padding: 5px 15px; margin: 0; font-size: 0.8em; background: #dc3545; color: white;">Sair</button>
             </div>
 
             <div class="secao">
@@ -85,13 +85,25 @@
                     <input type="text" id="bairro" placeholder="Bairro">
                     <input type="text" id="numero" placeholder="Número">
                 </div>
-                <input type="text" id="cidade" value="Jaraguá do Sul">
-                <input type="text" id="uf" value="SC">
+                <input type="hidden" id="cidade" value="Jaraguá do Sul">
+                <input type="hidden" id="uf" value="SC">
             </div>
 
-            <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px;">
+            <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
+
+            <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">Cadastros no Dispositivo</h3>
+                    <span id="contador-total" style="background: #007bff; color: white; padding: 2px 10px; border-radius: 10px; font-weight: bold;">0</span>
+                </div>
+                <div id="lista-cadastros" style="margin-top: 15px; max-height: 200px; overflow-y: auto; font-size: 0.85em; background: white; border: 1px solid #eee; padding: 5px;">
+                    <p style="color: #999; text-align: center;">Nenhum cadastro realizado ainda.</p>
+                </div>
+            </div>
+
+            <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px; margin-top: 20px;">
                 <h3 style="margin-top: 0;">Gerenciar Equipe</h3>
-                <label>Nome:</label>
+                <label>Nome do Integrante:</label>
                 <input type="text" id="novo-nome" placeholder="Nome do integrante">
                 <label>Senha/Código:</label>
                 <input type="password" id="novo-codigo" placeholder="Senha alfanumérica">
@@ -111,20 +123,6 @@
                 </div>
             </div>
 
-            <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0;">Cadastros no Dispositivo</h3>
-            <span id="contador-total" style="background: #007bff; color: white; padding: 2px 10px; border-radius: 10px; font-weight: bold;">0</span>
-           
-            </div>
-    
-    <div id="lista-cadastros" style="margin-top: 15px; max-height: 200px; overflow-y: auto; font-size: 0.85em; background: white; border: 1px solid #eee; padding: 5px;">
-        <p style="color: #999; text-align: center;">Nenhum cadastro realizado ainda.</p>
-    </div>
-</div>
-
-            
-            <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
             <button class="btn-export" id="btnExport" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
         </div>
     </div>
@@ -132,6 +130,8 @@
     <script>
         function autenticar() {
             const cod = document.getElementById('input-codigo').value;
+            if (!db) { alert("Aguarde o carregamento do sistema..."); return; }
+
             const tx = db.transaction("usuarios", "readonly");
             const store = tx.objectStore("usuarios");
             const consulta = store.get(cod);
@@ -143,18 +143,29 @@
                     document.getElementById('secao-login').classList.add('hidden');
                     document.getElementById('conteudo').classList.remove('hidden');
 
+                    // Regras de Visualização do CPF
                     const campoCpf = document.getElementById('cpf');
                     campoCpf.type = (usuario.perfil === "GESTOR") ? "text" : "password";
 
+                    // Carregar Monitor de Cadastros para todos os perfis
+                    atualizarMonitor();
+
+                    // Regras de Painel Admin
                     if (usuario.perfil === "GESTOR" || usuario.perfil === "COORDENADOR") {
                         document.getElementById('painel-admin').classList.remove('hidden');
-                        listarUsuarios(); // Carrega a lista ao entrar
+                        listarUsuarios(); 
                     }
-                } else { alert("Código incorreto!"); }
+                } else {
+                    alert("Código de acesso não encontrado!");
+                }
             };
+            consulta.onerror = () => alert("Erro ao acessar base de usuários.");
         }
 
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+        // Service Worker para funcionamento offline
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
     </script>
 </body>
 </html>
