@@ -1,5 +1,5 @@
 let db;
-const request = indexedDB.open("JGUA_DB", 4); // Versão 4
+const request = indexedDB.open("JGUA_DB", 4);
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
@@ -43,12 +43,21 @@ function atualizarMonitor() {
         document.getElementById('contador-total').innerText = total;
 
         if (total > 0) {
-            // Estatísticas Perfil
-            const assoc = registros.filter(r => r.tipo === "ASSOCIADO").length;
-            document.getElementById('bar-associado').style.width = (assoc / total * 100) + "%";
-            document.getElementById('bar-adepto').style.width = ((total - assoc) / total * 100) + "%";
+            // Ranking de Bairros
+            const bairrosContagem = {};
+            registros.forEach(r => {
+                const b = r.bairro ? r.bairro.toUpperCase() : "NÃO INFORMADO";
+                bairrosContagem[b] = (bairrosContagem[b] || 0) + 1;
+            });
+            const ranking = Object.entries(bairrosContagem).sort((a,b) => b[1] - a[1]).slice(0, 5);
+            let bairrosHtml = "";
+            ranking.forEach(([nome, qtd]) => {
+                const perc = Math.round((qtd/total)*100);
+                bairrosHtml += `<div class="bairro-item"><span>${nome}</span> <strong>${qtd} (${perc}%)</strong></div>`;
+            });
+            document.getElementById('stats-bairros').innerHTML = bairrosHtml;
 
-            // Estatísticas Sexo
+            // Gênero
             const masc = registros.filter(r => r.sexo === "M").length;
             const fem = registros.filter(r => r.sexo === "F").length;
             const outro = registros.filter(r => r.sexo === "O").length;
@@ -56,36 +65,34 @@ function atualizarMonitor() {
             document.getElementById('bar-fem').style.width = (fem / total * 100) + "%";
             document.getElementById('bar-outro').style.width = (outro / total * 100) + "%";
 
-            // Média de Idade
+            // Média Idade
             const idades = registros.map(r => r.idade).filter(id => !isNaN(id));
             const media = idades.reduce((a, b) => a + b, 0) / idades.length;
             document.getElementById('media-idade').innerText = Math.round(media);
 
-            // Origem
-            const autos = registros.filter(r => r.origem === "AUTO").length;
-            document.getElementById('perc-auto').innerText = Math.round(autos/total*100) + "%";
+            // Perfil
+            const assoc = registros.filter(r => r.tipo === "ASSOCIADO").length;
+            document.getElementById('perc-assoc').innerText = Math.round((assoc/total)*100) + "%";
         }
 
         const filtrados = registros.filter(r => r.nome.toLowerCase().includes(termo) || r.cpf.includes(termo) || r.bairro.toLowerCase().includes(termo));
         const listaDiv = document.getElementById('lista-cadastros');
         let html = '<table style="width:100%; border-collapse: collapse;">';
         [...filtrados].reverse().forEach(r => {
-            html += `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 8px 0;"><strong>${r.nome}</strong> (${r.idade} anos)<br><small>${r.bairro} | ${r.sexo}</small></td></tr>`;
+            html += `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 5px 0;"><strong>${r.nome}</strong> (${r.idade}a)<br><small>${r.bairro}</small></td></tr>`;
         });
         listaDiv.innerHTML = html + '</table>';
     };
 }
 
 function salvar() {
-    const campoCpf = document.getElementById('cpf');
-    const cpfValor = campoCpf.value;
+    const cpfValor = document.getElementById('cpf').value;
     const sexo = document.getElementById('sexo').value;
     const nasc = document.getElementById('nascimento').value;
 
     if (!validarCPF(cpfValor)) return alert("CPF Inválido!");
-    if (!sexo || !nasc) return alert("Sexo e Data de Nascimento são obrigatórios!");
+    if (!sexo || !nasc) return alert("Sexo e Nascimento são obrigatórios!");
 
-    // Cálculo da idade para o banco de dados
     const dataNasc = new Date(nasc);
     let idade = new Date().getFullYear() - dataNasc.getFullYear();
 
@@ -94,7 +101,7 @@ function salvar() {
     const index = store.index("cpf");
 
     index.get(cpfValor).onsuccess = (e) => {
-        if (e.target.result) return alert("CPF já cadastrado para: " + e.target.result.nome);
+        if (e.target.result) return alert("CPF já cadastrado!");
         
         const registro = {
             tipo: document.getElementById('tipo').value,
@@ -123,7 +130,7 @@ function salvar() {
     };
 }
 
-// Funções de Equipe e Exportação permanecem as mesmas (conforme sua versão anterior)
+// GESTÃO DE EQUIPE
 function criarUsuario() {
     const nome = document.getElementById('novo-nome').value.trim();
     const codigo = document.getElementById('novo-codigo').value.trim();
