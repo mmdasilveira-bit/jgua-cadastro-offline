@@ -28,7 +28,7 @@
         
         <div id="secao-login">
             <label>Código de Acesso:</label>
-        <input type="password" id="input-codigo" placeholder="Digite seu código de acesso">
+            <input type="password" id="input-codigo" placeholder="Digite seu código de acesso">
             <button class="btn-principal" onclick="autenticar()">Acessar Sistema</button>
         </div>
 
@@ -78,11 +78,9 @@
             <div class="secao">
                 <h3>3. Endereço (Jaraguá do Sul)</h3>
                 <label>CEP:</label>
-                <input type="text" id="cep" onblur="buscarCEP()" onkeyup="if(event.key==='Enter') buscarCEP()" placeholder="89250-000">
-                
+                <input type="text" id="cep" onblur="buscarCEP()" placeholder="89250-000">
                 <label>Rua/Avenida:</label>
                 <input type="text" id="logradouro">
-                
                 <div class="grid-2">
                     <input type="text" id="bairro" placeholder="Bairro">
                     <input type="text" id="numero" placeholder="Número">
@@ -91,13 +89,13 @@
                 <input type="text" id="uf" value="SC">
             </div>
 
-            <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px; margin-top: 20px;">
+            <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px;">
                 <h3 style="margin-top: 0;">Gerenciar Equipe</h3>
-                <label>Nome do Integrante:</label>
-                <input type="text" id="novo-nome" placeholder="Ex: João Silva">
-                <label>Código de Acesso (Senha):</label>
-             <input type="password" id="novo-codigo" placeholder="Defina uma senha (letras e números)">
-                <label>Perfil do Integrante:</label>
+                <label>Nome:</label>
+                <input type="text" id="novo-nome" placeholder="Nome do integrante">
+                <label>Senha/Código:</label>
+                <input type="password" id="novo-codigo" placeholder="Senha alfanumérica">
+                <label>Perfil:</label>
                 <select id="novo-perfil">
                     <option value="CADASTRADOR">CADASTRADOR</option>
                     <option value="VALIDADOR">VALIDADOR</option>
@@ -105,10 +103,16 @@
                     <option value="GESTOR">GESTOR</option>
                 </select>
                 <button class="btn-principal" onclick="criarUsuario()" style="background: #0056b3;">CADASTRAR INTEGRANTE</button>
+                
+                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #b3d7ff;">
+                <h4 style="margin-bottom: 10px;">Integrantes Atuais:</h4>
+                <div id="lista-usuarios" style="font-size: 0.85em; background: white; border-radius: 6px; padding: 10px; border: 1px solid #b3d7ff;">
+                    Carregando lista...
+                </div>
             </div>
 
             <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
-            <button class="btn-export" id="btnExport" onclick="if(typeof exportarDados === 'function') { exportarDados() } else { alert('Aguarde o carregamento...') }">EXPORTAR BASE (JSON)</button>
+            <button class="btn-export" id="btnExport" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
         </div>
     </div>
 
@@ -127,27 +131,17 @@
                     document.getElementById('conteudo').classList.remove('hidden');
 
                     const campoCpf = document.getElementById('cpf');
-                    if (usuario.perfil === "GESTOR") {
-                        campoCpf.type = "text";
-                    } else {
-                        campoCpf.type = "password";
-                        campoCpf.placeholder = "CPF Oculto";
-                    }
+                    campoCpf.type = (usuario.perfil === "GESTOR") ? "text" : "password";
 
                     if (usuario.perfil === "GESTOR" || usuario.perfil === "COORDENADOR") {
-                        const painel = document.getElementById('painel-admin');
-                        if(painel) painel.classList.remove('hidden');
+                        document.getElementById('painel-admin').classList.remove('hidden');
+                        listarUsuarios(); // Carrega a lista ao entrar
                     }
-                } else {
-                    alert("Código de acesso não encontrado!");
-                }
+                } else { alert("Código incorreto!"); }
             };
-            consulta.onerror = () => { alert("Erro ao consultar base de usuários."); };
         }
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
     </script>
 </body>
 </html>
