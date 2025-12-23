@@ -17,7 +17,6 @@ async function buscarCEP() {
     if (cep.length !== 8) return;
 
     try {
-        // Buscando na sua base completa de Jaraguá
         const response = await fetch('cep_base_jgs.json');
         const baseLocal = await response.json();
         
@@ -40,7 +39,7 @@ async function buscarCEP() {
             }
         }
     } catch (e) {
-        console.error("Erro ao acessar base de CEPs:", e);
+        console.error("Erro crítico ao carregar o arquivo:", e);
     }
 }
 
