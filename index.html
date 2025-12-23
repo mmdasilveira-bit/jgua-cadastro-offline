@@ -13,6 +13,14 @@
         .btn-verde { background: #28a745; }
         .perfil-badge { background: #333; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
     </style>
+
+<link rel="manifest" href="manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+    
 </head>
 <body>
 
