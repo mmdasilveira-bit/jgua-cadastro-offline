@@ -1,10 +1,18 @@
 let db;
-const request = indexedDB.open("JGUA_DB", 1);
+const request = indexedDB.open("JGUA_DB", 2); // Aumentamos a versão para 2
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
+    // Tabela de Cadastros
     if (!db.objectStoreNames.contains("cadastros")) {
         db.createObjectStore("cadastros", { keyPath: "id", autoIncrement: true });
+    }
+    // NOVA: Tabela de Usuários do Sistema
+    if (!db.objectStoreNames.contains("usuarios")) {
+        const userStore = db.createObjectStore("usuarios", { keyPath: "codigo" });
+        
+        // Criamos o GESTOR MESTRE padrão para você não ficar trancado fora
+        userStore.add({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
     }
 };
 
