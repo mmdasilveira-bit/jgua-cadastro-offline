@@ -19,6 +19,10 @@
         .btn-secundario { background: #28a745; color: white; }
         .btn-export { background: #6c757d; color: white; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        /* Estilos das barras de estatísticas */
+        .barra-progresso { flex: 1; background: #eee; height: 20px; border-radius: 10px; overflow: hidden; display: flex; margin: 10px 0; }
+        .segmento { height: 100%; transition: width 0.5s ease; }
     </style>
 </head>
 <body>
@@ -67,47 +71,60 @@
             </div>
 
             <div class="secao">
-                <h3>2. Contatos</h3>
+                <h3>2. Contatos e Endereço</h3>
                 <div class="grid-2">
-                    <input type="tel" id="whatsapp" placeholder="WhatsApp (DDD + Número)">
+                    <input type="tel" id="whatsapp" placeholder="WhatsApp">
                     <input type="email" id="email" placeholder="E-mail">
                 </div>
-                <input type="text" id="instagram" placeholder="@usuário_instagram">
-            </div>
-
-            <div class="secao">
-                <h3>3. Endereço (Jaraguá do Sul)</h3>
-                <label>CEP:</label>
-                <input type="text" id="cep" onblur="buscarCEP()" placeholder="89250-000">
-                <label>Rua/Avenida:</label>
-                <input type="text" id="logradouro">
+                <input type="text" id="cep" onblur="buscarCEP()" placeholder="CEP (Jaraguá do Sul)">
+                <input type="text" id="logradouro" placeholder="Rua/Avenida">
                 <div class="grid-2">
                     <input type="text" id="bairro" placeholder="Bairro">
-                    <input type="text" id="numero" placeholder="Número">
+                    <input type="text" id="numero" placeholder="Nº">
                 </div>
                 <input type="hidden" id="cidade" value="Jaraguá do Sul">
                 <input type="hidden" id="uf" value="SC">
+                <input type="hidden" id="instagram" value="">
             </div>
 
             <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
 
-            <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
+            <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0;">Cadastros no Dispositivo</h3>
+                    <h3 style="margin: 0;">Resumo da Base</h3>
                     <span id="contador-total" style="background: #007bff; color: white; padding: 2px 10px; border-radius: 10px; font-weight: bold;">0</span>
                 </div>
-                <div id="lista-cadastros" style="margin-top: 15px; max-height: 200px; overflow-y: auto; font-size: 0.85em; background: white; border: 1px solid #eee; padding: 5px;">
-                    <p style="color: #999; text-align: center;">Nenhum cadastro realizado ainda.</p>
+
+                <label style="margin-top: 15px;">Perfil (Verde: Assoc. | Amarelo: Adepto):</label>
+                <div class="barra-progresso">
+                    <div id="bar-associado" class="segmento" style="background: #28a745; width: 0%;"></div>
+                    <div id="bar-adepto" class="segmento" style="background: #ffc107; width: 0%;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75em; font-weight: bold;">
+                    <span>ASSOC: <span id="txt-associado">0</span></span>
+                    <span>ADEPT: <span id="txt-adepto">0</span></span>
+                </div>
+
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                
+                <label>Origem dos Dados:</label>
+                <div style="font-size: 0.8em; display: flex; justify-content: space-around; text-align: center;">
+                    <div><strong>AUTO</strong><br><span id="perc-auto">0%</span></div>
+                    <div><strong>TERCEIRO</strong><br><span id="perc-terceiro">0%</span></div>
+                </div>
+
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                
+                <h4 style="margin-bottom: 5px;">Últimos Cadastros:</h4>
+                <div id="lista-cadastros" style="max-height: 150px; overflow-y: auto; font-size: 0.85em; background: white; border: 1px solid #eee; padding: 5px;">
+                    <p style="text-align: center; color: #999;">Aguardando dados...</p>
                 </div>
             </div>
 
             <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px;">
-                <h3 style="margin-top: 0;">Gerenciar Equipe</h3>
-                <label>Nome:</label>
-                <input type="text" id="novo-nome" placeholder="Nome do integrante">
-                <label>Senha/Código:</label>
-                <input type="password" id="novo-codigo" placeholder="Senha alfanumérica">
-                <label>Perfil:</label>
+                <h3 style="margin-top: 0;">Gestão de Equipe</h3>
+                <input type="text" id="novo-nome" placeholder="Nome">
+                <input type="password" id="novo-codigo" placeholder="Senha Alfanumérica">
                 <select id="novo-perfil">
                     <option value="CADASTRADOR">CADASTRADOR</option>
                     <option value="VALIDADOR">VALIDADOR</option>
@@ -116,19 +133,16 @@
                 </select>
                 <button class="btn-principal" onclick="criarUsuario()" style="background: #0056b3;">CADASTRAR INTEGRANTE</button>
                 
-                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #b3d7ff;">
-                <h4 style="margin-bottom: 5px;">Alterar Senha:</h4>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #b3d7ff;">
+                <h4 style="margin-bottom: 5px;">Trocar Senha:</h4>
                 <div class="grid-2">
-                    <input type="password" id="cod-atual" placeholder="Cód. Atual">
-                    <input type="password" id="cod-novo" placeholder="Novo Cód.">
+                    <input type="password" id="cod-atual" placeholder="Atual">
+                    <input type="password" id="cod-novo" placeholder="Nova">
                 </div>
-                <button class="btn-principal" onclick="alterarSenha()" style="background: #6c757d; padding: 10px; margin-top: 5px;">ATUALIZAR SENHA</button>
+                <button class="btn-principal" onclick="alterarSenha()" style="background: #6c757d; padding: 10px;">ATUALIZAR SENHA</button>
 
-                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #b3d7ff;">
-                <h4 style="margin-bottom: 10px;">Integrantes Atuais:</h4>
-                <div id="lista-usuarios" style="font-size: 0.85em; background: white; border-radius: 6px; padding: 10px; border: 1px solid #b3d7ff;">
-                    Carregando lista...
-                </div>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #b3d7ff;">
+                <div id="lista-usuarios" style="font-size: 0.85em; background: white; padding: 5px; border-radius: 4px;"></div>
             </div>
 
             <button class="btn-export" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
