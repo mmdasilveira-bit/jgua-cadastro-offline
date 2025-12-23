@@ -3,7 +3,7 @@ const assets = [
   './',
   './index.html',
   './app.js',
-  './cep_base.json',
+  './cep_base_jgs.json', // Nome corrigido aqui
   './manifest.json'
 ];
 
