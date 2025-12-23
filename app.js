@@ -3,11 +3,9 @@ const request = indexedDB.open("JGUA_DB", 2);
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
-    // Tabela de Cadastros de Pessoas
     if (!db.objectStoreNames.contains("cadastros")) {
         db.createObjectStore("cadastros", { keyPath: "id", autoIncrement: true });
     }
-    // Tabela de Usuários do Sistema (Equipe)
     if (!db.objectStoreNames.contains("usuarios")) {
         const userStore = db.createObjectStore("usuarios", { keyPath: "codigo" });
         userStore.add({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
@@ -16,13 +14,12 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
-    // Se o usuário já estiver logado (pós-refresh), atualiza o contador e lista
     if(!document.getElementById('conteudo').classList.contains('hidden')) {
         atualizarMonitor();
     }
 };
 
-// --- GESTÃO DE EQUIPE (ADMINISTRAÇÃO) ---
+// --- GESTÃO DE EQUIPE ---
 
 function criarUsuario() {
     const perfilLogado = document.getElementById('label-perfil').innerText;
@@ -30,7 +27,7 @@ function criarUsuario() {
     const codigo = document.getElementById('novo-codigo').value.trim();
     const perfilNovo = document.getElementById('novo-perfil').value;
 
-    if (!nome || !codigo) return alert("Preencha todos os campos do novo integrante!");
+    if (!nome || !codigo) return alert("Preencha todos os campos!");
     if (perfilLogado === "COORDENADOR" && (perfilNovo === "GESTOR" || perfilNovo === "COORDENADOR")) {
         return alert("Você não tem permissão para criar este perfil.");
     }
@@ -40,12 +37,40 @@ function criarUsuario() {
     const pedido = store.add({ codigo, nome, perfil: perfilNovo });
 
     pedido.onsuccess = () => {
-        alert("Integrante cadastrado com sucesso!");
+        alert("Integrante cadastrado!");
         document.getElementById('novo-nome').value = "";
         document.getElementById('novo-codigo').value = "";
         listarUsuarios();
     };
     pedido.onerror = () => alert("Erro: Este código já existe.");
+}
+
+function alterarSenha() {
+    const codAtual = document.getElementById('cod-atual').value.trim();
+    const codNovo = document.getElementById('cod-novo').value.trim();
+    const perfilLogado = document.getElementById('label-perfil').innerText;
+
+    if (!codAtual || !codNovo) return alert("Preencha os dois campos de código.");
+
+    const tx = db.transaction("usuarios", "readwrite");
+    const store = tx.objectStore("usuarios");
+
+    store.get(codAtual).onsuccess = (e) => {
+        const usuario = e.target.result;
+        if (!usuario) return alert("Código atual não encontrado.");
+        if (perfilLogado === "COORDENADOR" && usuario.perfil === "GESTOR") {
+            return alert("Coordenadores não alteram senhas de Gestores.");
+        }
+
+        store.delete(codAtual).onsuccess = () => {
+            store.add({ codigo: codNovo, nome: usuario.nome, perfil: usuario.perfil }).onsuccess = () => {
+                alert("Senha atualizada com sucesso!");
+                document.getElementById('cod-atual').value = "";
+                document.getElementById('cod-novo').value = "";
+                listarUsuarios();
+            };
+        };
+    };
 }
 
 function listarUsuarios() {
@@ -60,7 +85,7 @@ function listarUsuarios() {
             html += `<tr style="border-bottom: 1px solid #eee;">
                 <td style="padding: 8px 0;"><strong>${u.nome}</strong> (${u.perfil})</td>
                 <td style="text-align: right;">
-                    <button onclick="excluirUsuario('${u.codigo}')" style="width: auto; padding: 5px 10px; background: #dc3545; color: white; margin: 0; font-size: 0.7em; cursor: pointer;">Excluir</button>
+                    <button onclick="excluirUsuario('${u.codigo}')" style="width: auto; padding: 5px 10px; background: #dc3545; color: white; margin: 0; font-size: 0.7em;">Excluir</button>
                 </td>
             </tr>`;
         });
@@ -70,51 +95,39 @@ function listarUsuarios() {
 }
 
 function excluirUsuario(codigo) {
-    if (!confirm("Tem certeza que deseja excluir este acesso?")) return;
+    if (!confirm("Excluir este acesso?")) return;
     const tx = db.transaction("usuarios", "readwrite");
     tx.objectStore("usuarios").delete(codigo).onsuccess = () => {
-        alert("Acesso removido!");
+        alert("Removido!");
         listarUsuarios();
     };
 }
 
-// --- MONITORAMENTO DE CADASTROS (CONTADOR E LISTA) ---
+// --- MONITORAMENTO ---
 
 function atualizarMonitor() {
     const listaDiv = document.getElementById('lista-cadastros');
     const contador = document.getElementById('contador-total');
-    
     if (!db) return;
-
     const tx = db.transaction("cadastros", "readonly");
     const store = tx.objectStore("cadastros");
-    
     store.getAll().onsuccess = (e) => {
         const registros = e.target.result;
         contador.innerText = registros.length;
-
         if (registros.length === 0) {
-            listaDiv.innerHTML = '<p style="color: #999; text-align: center;">Nenhum cadastro realizado ainda.</p>';
+            listaDiv.innerHTML = '<p style="color: #999; text-align: center;">Nenhum cadastro ainda.</p>';
             return;
         }
-
         let html = '<table style="width: 100%; border-collapse: collapse;">';
-        // Inverte a lista para mostrar os mais recentes no topo
         registros.reverse().forEach(r => {
-            html += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px 0;">
-                        <strong>${r.nome} ${r.sobrenome || ''}</strong><br>
-                        <small style="color: #666;">${r.bairro} - ${r.data_cadastro}</small>
-                    </td>
-                </tr>`;
+            html += `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 8px 0;"><strong>${r.nome} ${r.sobrenome || ''}</strong><br><small>${r.bairro} - ${r.data_cadastro}</small></td></tr>`;
         });
         html += '</table>';
         listaDiv.innerHTML = html;
     };
 }
 
-// --- FUNCIONALIDADES DO FORMULÁRIO (CEP E SALVAR) ---
+// --- CORE ---
 
 async function buscarCEP() {
     let cep = document.getElementById('cep').value.replace(/\D/g, ''); 
@@ -122,11 +135,10 @@ async function buscarCEP() {
     try {
         const response = await fetch('cep_base_jgs.json');
         const baseLocal = await response.json();
-        const resultado = baseLocal[cep]; 
-        if (resultado && resultado.length > 0) {
-            const dados = resultado[0];
-            document.getElementById('logradouro').value = dados.logradouro || '';
-            document.getElementById('bairro').value = dados.bairro || '';
+        const r = baseLocal[cep]; 
+        if (r && r.length > 0) {
+            document.getElementById('logradouro').value = r[0].logradouro || '';
+            document.getElementById('bairro').value = r[0].bairro || '';
         } else if (navigator.onLine) {
             const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
             const d = await res.json();
@@ -135,7 +147,7 @@ async function buscarCEP() {
                 document.getElementById('bairro').value = d.bairro;
             }
         }
-    } catch (e) { console.error("Erro ao buscar CEP:", e); }
+    } catch (e) { console.error(e); }
 }
 
 function salvar() {
@@ -157,19 +169,12 @@ function salvar() {
         data_cadastro: new Date().toLocaleString(),
         cadastrado_por: perfil
     };
-
-    if (!registro.nome) return alert("O campo Nome é obrigatório!");
-
+    if (!registro.nome) return alert("Nome obrigatório!");
     const tx = db.transaction("cadastros", "readwrite");
-    const store = tx.objectStore("cadastros");
-    
-    store.add(registro).onsuccess = () => {
-        alert("Cadastro salvo com sucesso!");
-        // Limpa os campos do formulário
-        ["nome", "sobrenome", "cpf", "nascimento", "whatsapp", "email", "instagram", "cep", "logradouro", "bairro", "numero"].forEach(id => {
-            document.getElementById(id).value = "";
-        });
-        atualizarMonitor(); // Atualiza a lista e o contador imediatamente
+    tx.objectStore("cadastros").add(registro).onsuccess = () => {
+        alert("Salvo!");
+        ["nome", "sobrenome", "cpf", "nascimento", "whatsapp", "email", "instagram", "cep", "logradouro", "bairro", "numero"].forEach(id => document.getElementById(id).value = "");
+        atualizarMonitor();
     };
 }
 
@@ -184,7 +189,7 @@ function exportarDados() {
         const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `cadastros_${perfil.toLowerCase()}_${new Date().toLocaleDateString()}.json`;
+        a.download = `cadastros_${perfil.toLowerCase()}.json`;
         a.click();
     };
 }
