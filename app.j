@@ -1,23 +1,19 @@
-// 1. Configuração do Banco de Dados Offline (IndexedDB)
 let db;
 const request = indexedDB.open("JGUA_DB", 1);
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
-    // Cria a "tabela" de cadastros se não existir
     if (!db.objectStoreNames.contains("cadastros")) {
         db.createObjectStore("cadastros", { keyPath: "id", autoIncrement: true });
     }
 };
 
-request.onsuccess = (e) => { db = e.target.result; console.log("Banco pronto!"); };
+request.onsuccess = (e) => { db = e.target.result; };
 
-// 2. Lógica de Busca de CEP (Híbrida: Local + Online)
 async function buscarCEP() {
-    let cep = document.getElementById('cep').value.replace(/\D/g, ''); // Remove hífen
+    let cep = document.getElementById('cep').value.replace(/\D/g, '');
     if (cep.length !== 8) return;
 
-    // A. Busca na base local (seu JSON)
     try {
         const response = await fetch('cep_base.json');
         const baseLocal = await response.json();
@@ -25,20 +21,12 @@ async function buscarCEP() {
 
         if (encontrado) {
             preencherCampos(encontrado);
-            return; // Encontrou local, encerra aqui
+        } else if (navigator.onLine) {
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const dados = await res.json();
+            if (!dados.erro) preencherCampos(dados);
         }
-    } catch (e) { console.log("Erro ao ler base local ou offline."); }
-
-    // B. Se não achou local e tem internet, busca no ViaCEP
-    if (navigator.onLine) {
-        fetch(`https://viacep.com.br/ws/${cep}/json/`)
-            .then(res => res.json())
-            .then(dados => {
-                if (!dados.erro) preencherCampos(dados);
-            });
-    } else {
-        alert("CEP não encontrado na base local e você está sem internet.");
-    }
+    } catch (e) { console.error("Erro na busca de CEP"); }
 }
 
 function preencherCampos(dados) {
@@ -48,22 +36,51 @@ function preencherCampos(dados) {
     document.getElementById('uf').value = dados.uf || '';
 }
 
-// 3. Função para Salvar Cadastro
 function salvar() {
+    const perfil = document.getElementById('label-perfil').innerText;
     const registro = {
         nome: document.getElementById('nome').value,
         cpf: document.getElementById('cpf').value,
-        cep: document.getElementById('cep').value.replace(/\D/g, ''),
+        cep: document.getElementById('cep').value,
         logradouro: document.getElementById('logradouro').value,
-        data_cadastro: new Date().toLocaleString()
+        bairro: document.getElementById('bairro').value,
+        cidade: document.getElementById('cidade').value,
+        uf: document.getElementById('uf').value,
+        data: new Date().toLocaleString(),
+        perfil_criador: perfil
     };
 
-    const transaction = db.transaction(["cadastros"], "readwrite");
-    const store = transaction.objectStore("cadastros");
-    store.add(registro);
+    const tx = db.transaction("cadastros", "readwrite");
+    tx.objectStore("cadastros").add(registro);
+    tx.oncomplete = () => {
+        alert("Salvo com sucesso!");
+        document.querySelectorAll('input').forEach(i => i.value = "");
+    };
+}
 
-    transaction.oncomplete = () => {
-        alert("Cadastro salvo localmente com sucesso!");
-        document.getElementById('nome').value = ''; // Limpa campo
+// Função para exportar os dados (Regra do CPF aqui!)
+function exportarDados() {
+    const perfil = document.getElementById('label-perfil').innerText;
+    const tx = db.transaction("cadastros", "readonly");
+    const store = tx.objectStore("cadastros");
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+        let dados = request.result;
+        
+        // REGRA DE OURO: Se não for GESTOR, mascara o CPF na exportação
+        if (perfil !== "GESTOR") {
+            dados = dados.map(item => ({
+                ...item,
+                cpf: "***.***.***-**" 
+            }));
+        }
+
+        const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `cadastros_jgua_${perfil}.json`;
+        a.click();
     };
 }
