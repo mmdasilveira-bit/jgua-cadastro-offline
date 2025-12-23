@@ -14,9 +14,9 @@ request.onupgradeneeded = (e) => {
     if (!db.objectStoreNames.contains("usuarios")) {
         const userStore = db.createObjectStore("usuarios", { keyPath: "codigo" });
         
-        // Criamos o GESTOR MESTRE padrão (Senha: 1234)
+        // Criamos o GESTOR MESTRE padrão (Senha: 1kabud12)
         userStore.add({ 
-            codigo: "1234", 
+            codigo: "1kabud12", 
             nome: "GESTOR MESTRE", 
             perfil: "GESTOR" 
         });
