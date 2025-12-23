@@ -91,7 +91,7 @@
 
             <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
 
-            <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 20px;">
+            <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h3 style="margin: 0;">Cadastros no Dispositivo</h3>
                     <span id="contador-total" style="background: #007bff; color: white; padding: 2px 10px; border-radius: 10px; font-weight: bold;">0</span>
@@ -101,9 +101,9 @@
                 </div>
             </div>
 
-            <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px; margin-top: 20px;">
+            <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px;">
                 <h3 style="margin-top: 0;">Gerenciar Equipe</h3>
-                <label>Nome do Integrante:</label>
+                <label>Nome:</label>
                 <input type="text" id="novo-nome" placeholder="Nome do integrante">
                 <label>Senha/Código:</label>
                 <input type="password" id="novo-codigo" placeholder="Senha alfanumérica">
@@ -117,21 +117,27 @@
                 <button class="btn-principal" onclick="criarUsuario()" style="background: #0056b3;">CADASTRAR INTEGRANTE</button>
                 
                 <hr style="margin: 20px 0; border: 0; border-top: 1px solid #b3d7ff;">
+                <h4 style="margin-bottom: 5px;">Alterar Senha:</h4>
+                <div class="grid-2">
+                    <input type="password" id="cod-atual" placeholder="Cód. Atual">
+                    <input type="password" id="cod-novo" placeholder="Novo Cód.">
+                </div>
+                <button class="btn-principal" onclick="alterarSenha()" style="background: #6c757d; padding: 10px; margin-top: 5px;">ATUALIZAR SENHA</button>
+
+                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #b3d7ff;">
                 <h4 style="margin-bottom: 10px;">Integrantes Atuais:</h4>
                 <div id="lista-usuarios" style="font-size: 0.85em; background: white; border-radius: 6px; padding: 10px; border: 1px solid #b3d7ff;">
                     Carregando lista...
                 </div>
             </div>
 
-            <button class="btn-export" id="btnExport" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
+            <button class="btn-export" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
         </div>
     </div>
 
     <script>
         function autenticar() {
             const cod = document.getElementById('input-codigo').value;
-            if (!db) { alert("Aguarde o carregamento do sistema..."); return; }
-
             const tx = db.transaction("usuarios", "readonly");
             const store = tx.objectStore("usuarios");
             const consulta = store.get(cod);
@@ -143,29 +149,20 @@
                     document.getElementById('secao-login').classList.add('hidden');
                     document.getElementById('conteudo').classList.remove('hidden');
 
-                    // Regras de Visualização do CPF
                     const campoCpf = document.getElementById('cpf');
                     campoCpf.type = (usuario.perfil === "GESTOR") ? "text" : "password";
 
-                    // Carregar Monitor de Cadastros para todos os perfis
                     atualizarMonitor();
 
-                    // Regras de Painel Admin
                     if (usuario.perfil === "GESTOR" || usuario.perfil === "COORDENADOR") {
                         document.getElementById('painel-admin').classList.remove('hidden');
                         listarUsuarios(); 
                     }
-                } else {
-                    alert("Código de acesso não encontrado!");
-                }
+                } else { alert("Código incorreto!"); }
             };
-            consulta.onerror = () => alert("Erro ao acessar base de usuários.");
         }
 
-        // Service Worker para funcionamento offline
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
     </script>
 </body>
 </html>
