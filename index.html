@@ -111,6 +111,19 @@
                 </div>
             </div>
 
+            <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Cadastros no Dispositivo</h3>
+            <span id="contador-total" style="background: #007bff; color: white; padding: 2px 10px; border-radius: 10px; font-weight: bold;">0</span>
+           
+            </div>
+    
+    <div id="lista-cadastros" style="margin-top: 15px; max-height: 200px; overflow-y: auto; font-size: 0.85em; background: white; border: 1px solid #eee; padding: 5px;">
+        <p style="color: #999; text-align: center;">Nenhum cadastro realizado ainda.</p>
+    </div>
+</div>
+
+            
             <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
             <button class="btn-export" id="btnExport" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
         </div>
