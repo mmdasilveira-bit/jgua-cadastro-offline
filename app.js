@@ -12,17 +12,13 @@ request.onupgradeneeded = (e) => {
     }
 };
 
-request.onsuccess = (e) => { 
-    db = e.target.result; 
-    if(!document.getElementById('conteudo').classList.contains('hidden')) {
-        atualizarMonitor();
-    }
-};
+request.onsuccess = (e) => { db = e.target.result; };
 
-// --- MONITOR E ESTATÍSTICAS ---
+// --- MONITOR COM FILTRO DE BUSCA ---
 
 function atualizarMonitor() {
     if (!db) return;
+    const termoBusca = document.getElementById('input-busca').value.toLowerCase();
     const tx = db.transaction("cadastros", "readonly");
     const store = tx.objectStore("cadastros");
     
@@ -31,46 +27,56 @@ function atualizarMonitor() {
         const total = registros.length;
         document.getElementById('contador-total').innerText = total;
 
-        // Cálculos
+        // Estatísticas (sempre sobre o total)
         const associados = registros.filter(r => r.tipo === "ASSOCIADO").length;
         const adeptos = registros.filter(r => r.tipo === "ADEPTO").length;
-        const autos = registros.filter(r => r.origem === "AUTO").length;
-        const terceiros = registros.filter(r => r.origem === "TERCEIRO").length;
-
-        // Atualiza Visuais
         document.getElementById('txt-associado').innerText = associados;
         document.getElementById('txt-adepto').innerText = adeptos;
         
         if (total > 0) {
             document.getElementById('bar-associado').style.width = (associados / total * 100) + "%";
             document.getElementById('bar-adepto').style.width = (adeptos / total * 100) + "%";
+            
+            let autos = registros.filter(r => r.origem === "AUTO").length;
             document.getElementById('perc-auto').innerText = Math.round(autos/total*100) + "%";
-            document.getElementById('perc-terceiro').innerText = Math.round(terceiros/total*100) + "%";
+            document.getElementById('perc-terceiro').innerText = Math.round((total-autos)/total*100) + "%";
         }
 
-        // Lista
+        // Lógica de Filtragem
+        const filtrados = registros.filter(r => {
+            return r.nome.toLowerCase().includes(termoBusca) || 
+                   r.cpf.includes(termoBusca) || 
+                   r.bairro.toLowerCase().includes(termoBusca) ||
+                   (r.sobrenome && r.sobrenome.toLowerCase().includes(termoBusca));
+        });
+
+        // Renderização da Lista
         const listaDiv = document.getElementById('lista-cadastros');
-        if (total === 0) {
-            listaDiv.innerHTML = '<p style="text-align: center; color: #999;">Sem cadastros.</p>';
+        if (filtrados.length === 0) {
+            listaDiv.innerHTML = '<p style="text-align: center; color: #999;">Nenhum resultado encontrado.</p>';
             return;
         }
-        let html = '<table style="width:100%; font-size: 0.9em;">';
-        [...registros].reverse().slice(0, 10).forEach(r => {
-            html += `<tr style="border-bottom: 1px solid #eee; padding: 4px 0;"><td><strong>${r.nome}</strong><br><small>${r.bairro}</small></td></tr>`;
+
+        let html = '<table style="width:100%; border-collapse: collapse;">';
+        [...filtrados].reverse().forEach(r => {
+            html += `<tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 8px 0;">
+                    <strong>${r.nome} ${r.sobrenome || ''}</strong><br>
+                    <small>${r.bairro} | CPF: ${r.cpf}</small>
+                </td>
+            </tr>`;
         });
-        html += '</table>';
-        listaDiv.innerHTML = html;
+        listaDiv.innerHTML = html + '</table>';
     };
 }
 
-// --- GESTÃO DE USUÁRIOS ---
+// --- GESTÃO DE EQUIPE ---
 
 function criarUsuario() {
     const nome = document.getElementById('novo-nome').value.trim();
     const codigo = document.getElementById('novo-codigo').value.trim();
     const perfil = document.getElementById('novo-perfil').value;
     if (!nome || !codigo) return alert("Preencha tudo!");
-
     const tx = db.transaction("usuarios", "readwrite");
     tx.objectStore("usuarios").add({ codigo, nome, perfil }).onsuccess = () => {
         alert("Cadastrado!");
@@ -81,8 +87,7 @@ function criarUsuario() {
 function alterarSenha() {
     const atual = document.getElementById('cod-atual').value.trim();
     const nova = document.getElementById('cod-novo').value.trim();
-    if (!atual || !nova) return alert("Preencha os códigos!");
-
+    if (!atual || !nova) return alert("Preencha os campos!");
     const tx = db.transaction("usuarios", "readwrite");
     const store = tx.objectStore("usuarios");
     store.get(atual).onsuccess = (e) => {
@@ -100,9 +105,9 @@ function alterarSenha() {
 function listarUsuarios() {
     const tx = db.transaction("usuarios", "readonly");
     tx.objectStore("usuarios").getAll().onsuccess = (e) => {
-        let html = '<table>';
+        let html = '<table style="width:100%">';
         e.target.result.forEach(u => {
-            html += `<tr><td>${u.nome} (${u.perfil})</td><td><button onclick="excluirUsuario('${u.codigo}')" style="background:red; color:white; padding:2px 5px; font-size:10px;">X</button></td></tr>`;
+            html += `<tr><td>${u.nome}</td><td><button onclick="excluirUsuario('${u.codigo}')" style="background:red; color:white; padding:2px 5px;">X</button></td></tr>`;
         });
         document.getElementById('lista-usuarios').innerHTML = html + '</table>';
     };
@@ -142,8 +147,7 @@ function salvar() {
         logradouro: document.getElementById('logradouro').value,
         bairro: document.getElementById('bairro').value,
         numero: document.getElementById('numero').value,
-        data_cadastro: new Date().toLocaleString(),
-        autor: document.getElementById('label-perfil').innerText
+        data_cadastro: new Date().toLocaleString()
     };
     if (!registro.nome) return alert("Nome obrigatório!");
     const tx = db.transaction("cadastros", "readwrite");
@@ -162,7 +166,7 @@ function exportarDados() {
         const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `cadastros_${perfil.toLowerCase()}.json`;
+        a.download = `cadastros.json`;
         a.click();
     };
 }
