@@ -23,6 +23,7 @@
         .segmento { height: 100%; transition: width 0.5s ease; }
         .busca-container { position: relative; margin-top: 10px; }
         .busca-input { background: #fff; border: 2px solid #007bff; font-weight: bold; }
+        .erro-input { border-color: #dc3545 !important; background-color: #fff8f8 !important; }
     </style>
 </head>
 <body>
@@ -62,7 +63,7 @@
                 </div>
                 <input type="text" id="nome" placeholder="Nome">
                 <input type="text" id="sobrenome" placeholder="Sobrenome">
-                <input type="text" id="cpf" placeholder="CPF">
+                <input type="text" id="cpf" placeholder="CPF (000.000.000-00)" maxlength="14" oninput="mascaraCPF(this)">
                 <input type="date" id="nascimento">
             </div>
 
@@ -100,13 +101,10 @@
                 </div>
 
                 <div class="busca-container">
-                    <label>Buscar Cadastros:</label>
-                    <input type="text" id="input-busca" class="busca-input" placeholder="🔍 Digite Nome, CPF ou Bairro..." onkeyup="atualizarMonitor()">
+                    <input type="text" id="input-busca" class="busca-input" placeholder="🔍 Buscar por Nome, CPF ou Bairro..." onkeyup="atualizarMonitor()">
                 </div>
                 
-                <div id="lista-cadastros" style="max-height: 250px; overflow-y: auto; font-size: 0.85em; background: white; border: 1px solid #eee; padding: 5px; margin-top: 10px;">
-                    <p style="text-align: center; color: #999;">Aguardando dados...</p>
-                </div>
+                <div id="lista-cadastros" style="max-height: 250px; overflow-y: auto; font-size: 0.85em; background: white; border: 1px solid #eee; padding: 5px; margin-top: 10px;"></div>
             </div>
 
             <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px;">
@@ -133,6 +131,14 @@
     </div>
 
     <script>
+        function mascaraCPF(i) {
+            let v = i.value.replace(/\D/g, "");
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            i.value = v;
+        }
+
         function autenticar() {
             const cod = document.getElementById('input-codigo').value;
             const tx = db.transaction("usuarios", "readonly");
