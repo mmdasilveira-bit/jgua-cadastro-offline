@@ -34,8 +34,8 @@
             <label>CPF:</label>
             <input type="text" id="cpf">
 
-            <label>CEP (Busca Automática):</label>
-            <input type="text" id="cep" onblur="buscarCEP()" placeholder="00000-000">
+          <label>CEP (Busca Automática):</label>
+          <input type="text" id="cep" onblur="buscarCEP()" onkeyup="if(event.key==='Enter') buscarCEP()" placeholder="00000-000">
 
             <label>Logradouro:</label>
             <input type="text" id="logradouro">
