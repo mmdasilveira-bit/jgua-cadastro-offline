@@ -22,7 +22,7 @@
         .barra-progresso { flex: 1; background: #eee; height: 15px; border-radius: 10px; overflow: hidden; display: flex; margin: 5px 0; }
         .segmento { height: 100%; transition: width 0.5s ease; }
         .busca-input { border: 2px solid #007bff; font-weight: bold; }
-        .erro-input { border-color: #dc3545 !important; background-color: #fff8f8 !important; }
+        .bairro-item { display: flex; justify-content: space-between; font-size: 0.8em; padding: 3px 0; border-bottom: 1px dashed #ddd; }
     </style>
 </head>
 <body>
@@ -67,43 +67,40 @@
                         <input type="date" id="nascimento" onchange="calcularIdadeVisual()">
                     </div>
                     <div>
-                        <label>Idade Atual:</label>
-                        <input type="text" id="idade-visual" readonly placeholder="Calculado..." style="background: #e9ecef;">
+                        <label>Idade:</label>
+                        <input type="text" id="idade-visual" readonly style="background: #eee;">
                     </div>
                 </div>
             </div>
 
             <div class="secao">
-                <h3>2. Contatos e Endereço</h3>
-                <div class="grid-2">
-                    <input type="tel" id="whatsapp" placeholder="WhatsApp">
-                    <input type="email" id="email" placeholder="E-mail">
-                </div>
+                <h3>2. Endereço e Contato</h3>
                 <input type="text" id="cep" onblur="buscarCEP()" placeholder="CEP">
                 <input type="text" id="logradouro" placeholder="Rua/Avenida">
                 <div class="grid-2">
                     <input type="text" id="bairro" placeholder="Bairro">
                     <input type="text" id="numero" placeholder="Nº">
                 </div>
-                <input type="hidden" id="cidade" value="Jaraguá do Sul">
-                <input type="hidden" id="uf" value="SC">
+                <div class="grid-2">
+                    <input type="tel" id="whatsapp" placeholder="WhatsApp">
+                    <input type="email" id="email" placeholder="E-mail">
+                </div>
             </div>
 
             <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
 
             <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0;">Resumo Estatístico</h3>
+                    <h3 style="margin: 0;">Estatísticas Geográficas</h3>
                     <span id="contador-total" style="background: #007bff; color: white; padding: 2px 10px; border-radius: 10px; font-weight: bold;">0</span>
                 </div>
 
-                <label style="margin-top:10px; font-size: 0.8em;">Perfil (Verde: Assoc. | Amarelo: Adepto):</label>
-                <div class="barra-progresso">
-                    <div id="bar-associado" class="segmento" style="background: #28a745; width: 0%;"></div>
-                    <div id="bar-adepto" class="segmento" style="background: #ffc107; width: 0%;"></div>
+                <label style="margin-top: 15px; display: block;">Top Bairros (Jaraguá do Sul):</label>
+                <div id="stats-bairros" style="margin-top: 5px; background: #fff; padding: 8px; border-radius: 5px; border: 1px solid #eee;">
+                    <small style="color:#999">Nenhum dado...</small>
                 </div>
 
-                <label style="margin-top:10px; font-size: 0.8em;">Gênero (Azul: Masc. | Rosa: Fem. | Cinza: Outro):</label>
+                <label style="margin-top:15px; display: block; font-size: 0.8em;">Gênero:</label>
                 <div class="barra-progresso">
                     <div id="bar-masc" class="segmento" style="background: #007bff; width: 0%;"></div>
                     <div id="bar-fem" class="segmento" style="background: #e83e8c; width: 0%;"></div>
@@ -111,26 +108,24 @@
                 </div>
 
                 <div style="font-size: 0.75em; display: flex; justify-content: space-between; margin-top: 10px;">
-                    <span>Média de Idade: <strong id="media-idade">0</strong> anos</span>
-                    <span>AUTO: <strong id="perc-auto">0%</strong></span>
+                    <span>Média Idade: <strong id="media-idade">0</strong></span>
+                    <span>Perfil Associado: <strong id="perc-assoc">0%</strong></span>
                 </div>
 
                 <input type="text" id="input-busca" class="busca-input" style="margin-top: 15px;" placeholder="🔍 Buscar Nome, CPF ou Bairro..." onkeyup="atualizarMonitor()">
-                <div id="lista-cadastros" style="max-height: 200px; overflow-y: auto; font-size: 0.85em; background: white; border: 1px solid #eee; padding: 5px; margin-top: 10px;"></div>
+                <div id="lista-cadastros" style="max-height: 150px; overflow-y: auto; font-size: 0.8em; background: white; border: 1px solid #eee; padding: 5px; margin-top: 10px;"></div>
             </div>
 
             <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px;">
-                <h3 style="margin-top: 0;">Gestão de Equipe</h3>
+                <h3 style="margin-top: 0;">Gestão Admin</h3>
                 <input type="text" id="novo-nome" placeholder="Nome">
                 <input type="password" id="novo-codigo" placeholder="Senha">
                 <select id="novo-perfil">
                     <option value="CADASTRADOR">CADASTRADOR</option>
-                    <option value="VALIDADOR">VALIDADOR</option>
-                    <option value="COORDENADOR">COORDENADOR</option>
                     <option value="GESTOR">GESTOR</option>
                 </select>
-                <button class="btn-principal" onclick="criarUsuario()">CADASTRAR INTEGRANTE</button>
-                <div id="lista-usuarios" style="font-size: 0.85em; background: white; padding: 5px; border-radius: 4px; margin-top: 10px;"></div>
+                <button class="btn-principal" onclick="criarUsuario()">CADASTRAR</button>
+                <div id="lista-usuarios" style="font-size: 0.85em; background: white; padding: 5px; border-radius: 4px;"></div>
             </div>
 
             <button class="btn-export" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
@@ -170,14 +165,13 @@
                     document.getElementById('conteudo').classList.remove('hidden');
                     document.getElementById('cpf').type = (usuario.perfil === "GESTOR") ? "text" : "password";
                     atualizarMonitor();
-                    if (usuario.perfil === "GESTOR" || usuario.perfil === "COORDENADOR") {
+                    if (usuario.perfil === "GESTOR") {
                         document.getElementById('painel-admin').classList.remove('hidden');
                         listarUsuarios(); 
                     }
                 } else { alert("Código incorreto!"); }
             };
         }
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
     </script>
 </body>
 </html>
