@@ -91,7 +91,7 @@
             </div>
 
             <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
-            <button class="btn-export" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
+           <button class="btn-export" id="btnExport" onclick="if(typeof exportarDados === 'function') { exportarDados() } else { alert('O sistema ainda está carregando os dados, aguarde 5 segundos...') }">EXPORTAR BASE (JSON)</button>
         </div>
     </div>
 
