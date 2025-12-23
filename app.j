@@ -39,7 +39,7 @@ async function buscarCEP() {
             }
         }
     } catch (e) {
-        console.error("Erro crítico ao carregar o arquivo:", e);
+        console.error("Erro ao carregar base de CEPs:", e);
     }
 }
 
