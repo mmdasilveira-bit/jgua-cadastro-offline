@@ -4,88 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JGUA - Autocadastro</title>
+    <link rel="manifest" href="manifest.json">
     <script src="app.js" defer></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 15px; background: #007bff; color: #333; display: flex; justify-content: center; }
-        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 500px; width: 100%; }
-        h2 { color: #007bff; text-align: center; margin-bottom: 5px; }
-        p { text-align: center; font-size: 0.9em; color: #666; margin-bottom: 20px; }
-        .secao { margin-bottom: 15px; }
+        /* Estilos sincronizados com sua aplicação principal */
+        body { font-family: 'Segoe UI', sans-serif; padding: 15px; background: #eceff1; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        .secao { border-bottom: 1px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
+        h2 { text-align: center; margin-bottom: 20px; color: #333; }
+        h3 { color: #007bff; font-size: 1.1em; margin-bottom: 15px; }
         label { font-weight: bold; font-size: 0.85em; display: block; margin-top: 10px; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1em; cursor: pointer; margin-top: 10px; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-secundario { background: #28a745; color: white; transition: background 0.3s; }
+        .btn-secundario:hover { background: #218838; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .footer { text-align: center; font-size: 0.7em; color: #999; margin-top: 20px; }
+        .footer-auto { text-align: center; font-size: 0.8em; color: #666; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>JGUA</h2>
-    <p>Seja bem-vindo! Preencha seus dados com segurança para participar.</p>
+    <h2>JGUA - Cadastro</h2>
 
-    <div class="secao">
-        <div class="grid-2">
-            <div>
-                <label>Tipo:</label>
-                <select id="tipo">
-                    <option value="ASSOCIADO">ASSOCIADO</option>
-                    <option value="ADEPTO">ADEPTO</option>
-                </select>
+    <div id="conteudo-auto">
+        <input type="hidden" id="tipo" value="ADEPTO">
+        <input type="hidden" id="origem" value="AUTO">
+        <input type="hidden" id="edit-id" value="">
+
+        <div class="secao">
+            <h3>1. Identificação</h3>
+            <div class="grid-2">
+                <input type="text" id="nome" placeholder="Nome">
+                <input type="text" id="sobrenome" placeholder="Sobrenome">
             </div>
-            <div>
-                <label>Sexo:</label>
+            <div class="grid-2">
+                <input type="text" id="cpf" placeholder="CPF" maxlength="14" oninput="mascaraCPF(this)">
                 <select id="sexo">
-                    <option value="">Selecione...</option>
+                    <option value="">Sexo...</option>
                     <option value="M">Masculino</option>
                     <option value="F">Feminino</option>
                     <option value="O">Outro</option>
                 </select>
             </div>
+            <label>Data de Nascimento:</label>
+            <input type="date" id="nascimento">
         </div>
 
-        <label>Nome Completo:</label>
-        <div class="grid-2">
-            <input type="text" id="nome" placeholder="Nome">
-            <input type="text" id="sobrenome" placeholder="Sobrenome">
+        <div class="secao">
+            <h3>2. Contato</h3>
+            <div class="grid-2">
+                <input type="tel" id="whatsapp" placeholder="WhatsApp (DDD+Número)">
+                <input type="email" id="email" placeholder="E-mail">
+            </div>
         </div>
 
-        <label>CPF:</label>
-        <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)">
-
-        <label>Data de Nascimento:</label>
-        <input type="date" id="nascimento">
-    </div>
-
-    <div class="secao">
-        <label>Contato:</label>
-        <div class="grid-2">
-            <input type="tel" id="whatsapp" placeholder="WhatsApp">
-            <input type="email" id="email" placeholder="E-mail">
+        <div class="secao">
+            <h3>3. Endereço</h3>
+            <div class="grid-2">
+                <input type="text" id="cep" placeholder="CEP" onblur="buscarCEP()">
+                <input type="text" id="bairro" placeholder="Bairro">
+            </div>
+            <div class="grid-2" style="grid-template-columns: 3fr 1fr;">
+                <input type="text" id="logradouro" placeholder="Rua/Avenida">
+                <input type="text" id="numero" placeholder="Nº">
+            </div>
         </div>
-    </div>
 
-    <div class="secao">
-        <label>Endereço em Jaraguá do Sul:</label>
-        <input type="text" id="cep" onblur="buscarCEP()" placeholder="CEP">
-        <div class="grid-2">
-            <input type="text" id="bairro" placeholder="Bairro">
-            <input type="text" id="numero" placeholder="Nº">
+        <button class="btn-secundario" onclick="salvarAuto()">FINALIZAR MEU CADASTRO</button>
+
+        <div class="footer-auto">
+            Ao clicar em finalizar, você concorda com o tratamento de seus dados para fins de cadastro.
         </div>
-        <input type="text" id="logradouro" placeholder="Rua/Avenida">
-    </div>
-
-    <input type="hidden" id="origem" value="AUTO">
-    <input type="hidden" id="label-perfil" value="CIDADAO">
-
-    <button onclick="salvarAuto()">ENVIAR MEU CADASTRO</button>
-
-    <div class="footer">
-        Protegido pela LGPD | JGUA Jaraguá do Sul
     </div>
 </div>
 
 <script>
+    // Injeta o identificador de sistema para o app.js registrar o autor corretamente
+    function salvarAuto() {
+        window.labelNomeUser_Forced = "SISTEMA-AUTO";
+        if(typeof salvar === 'function') {
+            salvar();
+        }
+    }
+
     function mascaraCPF(i) {
         let v = i.value.replace(/\D/g, "");
         v = v.replace(/(\d{3})(\d)/, "$1.$2");
@@ -93,22 +95,6 @@
         v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
         i.value = v;
     }
-
-    // Função simplificada para o cidadão
-    function salvarAuto() {
-        if(typeof salvar === "function") {
-            salvar();
-            // Sobrescrevemos o alert de sucesso para algo mais amigável
-            window.alert = function(msg) {
-                if(msg === "Salvo!") {
-                    document.body.innerHTML = "<div class='card' style='text-align:center'><h2>Sucesso!</h2><p>Seu cadastro foi enviado. Obrigado por participar!</p><button onclick='location.reload()'>Novo Cadastro</button></div>";
-                } else {
-                    confirm(msg);
-                }
-            }
-        }
-    }
 </script>
-
 </body>
 </html>
