@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JGUA Cadastro Offline</title>
     <link rel="manifest" href="manifest.json">
-    <script src="app.js" defer></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 15px; background: #eceff1; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
@@ -104,8 +103,8 @@
     </div>
 </div>
 
+<script src="app.js"></script>
 <script>
-    // Mantive sua função de máscara original
     function mascaraCPF(i) {
         let v = i.value.replace(/\D/g, "");
         v = v.replace(/(\d{3})(\d)/, "$1.$2");
