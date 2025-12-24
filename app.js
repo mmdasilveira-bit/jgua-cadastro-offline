@@ -96,11 +96,10 @@ const registro = {
 };
 
     // Auditoria
-    if (editId) {
+  if (editId) {
         registro.id = Number(editId);
+        const userAtual = window.labelNomeUser_Forced || document.getElementById('label-nome-user')?.innerText || "SISTEMA";
         registro.ultima_alteracao = `${userAtual} | ${new Date().toLocaleString()}`;
-    } else {
-        registro.autor = userAtual;
     }
 
     try {
