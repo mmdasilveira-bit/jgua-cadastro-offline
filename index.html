@@ -3,27 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JGUA Cadastro Offline</title>
+    <title>JGUA - Sistema de Cadastro</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 15px; background: #eceff1; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 15px; background: #eceff1; color: #333; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
         .hidden { display: none; }
-        .secao { border-bottom: 1px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
-        h3 { color: #007bff; font-size: 1.1em; }
+        .secao { border-bottom: 1px solid #eee; margin-bottom: 20px; padding-bottom: 15px; }
+        h3 { color: #007bff; font-size: 1.1em; margin-bottom: 10px; }
         label { font-weight: bold; font-size: 0.85em; display: block; margin-top: 10px; }
         input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-principal { background: #007bff; color: white; }
         .btn-secundario { background: #28a745; color: white; }
+        .btn-cancelar { background: #6c757d; color: white; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .info-user { font-size: 0.8em; color: #555; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .info-user { font-size: 0.8em; color: #555; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .item-lista { border-bottom: 1px solid #eee; padding: 10px 0; cursor: pointer; }
+        .item-lista:hover { background: #f8f9fa; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 style="text-align: center;">JGUA - Sistema de Cadastro</h2>
+    <h2 style="text-align: center; margin-top: 0;">JGUA</h2>
 
     <div id="secao-login">
         <label>Código de Acesso:</label>
@@ -33,72 +36,83 @@
 
     <div id="conteudo" class="hidden">
         <div class="info-user">
-            <span>Perfil: <strong id="label-perfil"></strong></span>
-            <span>Usuário: <strong id="label-nome-user"></strong></span>
-            <button onclick="location.reload()" style="width: auto; padding: 4px 8px; margin: 0; background: #dc3545; color: white; font-size: 0.8em;">Sair</button>
+            <span>Perfil: <strong id="label-perfil"></strong> | <strong id="label-nome-user"></strong></span>
+            <button onclick="location.reload()" style="width: auto; padding: 5px 10px; margin: 0; background: #dc3545; color: white;">Sair</button>
         </div>
 
-        <div class="secao">
-            <h3>1. Identificação</h3>
-            <div class="grid-2">
+        <div id="formulario-cadastro" class="secao">
+            <h3 id="titulo-form">Novo Cadastro</h3>
+            <input type="hidden" id="edit-id" value=""> <div class="grid-2">
                 <div><label>Tipo:</label><select id="tipo"><option value="ASSOCIADO">ASSOCIADO</option><option value="ADEPTO">ADEPTO</option></select></div>
                 <div><label>Origem:</label><select id="origem"><option value="EQUIPE">EQUIPE</option><option value="AUTO">AUTO</option></select></div>
             </div>
+
             <div class="grid-2">
                 <input type="text" id="nome" placeholder="Nome">
                 <input type="text" id="sobrenome" placeholder="Sobrenome">
             </div>
+
             <div class="grid-2">
                 <input type="text" id="cpf" placeholder="CPF" maxlength="14" oninput="mascaraCPF(this)">
                 <select id="sexo"><option value="">Sexo...</option><option value="M">Masculino</option><option value="F">Feminino</option><option value="O">Outro</option></select>
             </div>
+
             <label>Data de Nascimento:</label>
             <input type="date" id="nascimento">
-        </div>
 
-        <div class="secao">
-            <h3>2. Contatos</h3>
             <div class="grid-2">
                 <input type="tel" id="whatsapp" placeholder="WhatsApp (DDD+Número)">
                 <input type="email" id="email" placeholder="E-mail">
             </div>
-            <input type="hidden" id="instagram" value="">
-            <input type="hidden" id="telegram" value="">
-        </div>
 
-        <div class="secao">
-            <h3>3. Endereço</h3>
             <div class="grid-2">
                 <input type="text" id="cep" placeholder="CEP" onblur="buscarCEP()">
                 <input type="text" id="bairro" placeholder="Bairro">
             </div>
-            <input type="text" id="logradouro" placeholder="Rua/Avenida">
-            <input type="text" id="numero" placeholder="Número">
-        </div>
-
-        <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
-
-        <div id="monitor" class="secao" style="background: #f9f9f9; padding: 10px; border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between;">
-                <strong>Total: <span id="contador-total">0</span></strong>
-                <small>Média Idade: <span id="media-idade">0</span></small>
+            <div class="grid-2" style="grid-template-columns: 3fr 1fr;">
+                <input type="text" id="logradouro" placeholder="Rua/Avenida">
+                <input type="text" id="numero" placeholder="Nº">
             </div>
-            <div id="stats-bairros" style="font-size: 0.8em; margin-top: 5px;"></div>
-            <button id="btn-exportar" class="btn-principal" style="padding: 8px; font-size: 0.8em; background: #6c757d;" onclick="exportarDados()">Exportar JSON</button>
+
+            <div id="botoes-acao">
+                <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
+            </div>
+            <div id="botoes-edicao" class="hidden">
+                <button class="btn-secundario" onclick="salvar()">ATUALIZAR DADOS</button>
+                <button class="btn-cancelar" onclick="cancelarEdicao()">CANCELAR EDIÇÃO</button>
+            </div>
         </div>
 
-        <div id="secao-admin-users" class="secao">
-            <h3>Gestão de Equipe</h3>
+        <div id="monitor" class="secao">
+            <h3>Monitor & Busca Universal</h3>
+            <input type="text" id="input-busca" placeholder="Buscar por Nome, CPF ou Bairro..." oninput="atualizarMonitor()">
+            
+            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>Total: <span id="contador-total">0</span></strong>
+                    <small>Média Idade: <span id="media-idade">0</span></small>
+                </div>
+                <div id="stats-bairros" style="font-size: 0.85em; margin-top: 10px; color: #555;"></div>
+            </div>
+
+            <div id="lista-cadastros" style="max-height: 300px; overflow-y: auto;">
+                </div>
+
+            <button id="btn-exportar" class="btn-principal" style="background: #6c757d; margin-top: 15px;" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
+        </div>
+
+        <div id="secao-admin-users" class="secao hidden">
+            <h3>Gestão de Integrantes</h3>
             <input type="text" id="novo-nome" placeholder="Nome do Integrante">
-            <input type="text" id="novo-codigo" placeholder="Código de Acesso">
+            <input type="text" id="novo-codigo" placeholder="Código">
             <select id="novo-perfil">
                 <option value="CADASTRADOR">CADASTRADOR</option>
                 <option value="VALIDADOR">VALIDADOR</option>
                 <option value="COORDENADOR">COORDENADOR</option>
                 <option value="GESTOR">GESTOR</option>
             </select>
-            <button class="btn-principal" onclick="criarUsuario()">Adicionar Integrante</button>
-            <div id="lista-usuarios" style="margin-top:10px;"></div>
+            <button class="btn-principal" onclick="criarUsuario()">CRIAR ACESSO</button>
+            <div id="lista-usuarios"></div>
         </div>
     </div>
 </div>
