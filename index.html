@@ -7,171 +7,108 @@
     <link rel="manifest" href="manifest.json">
     <script src="app.js" defer></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 15px; background: #eceff1; color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 15px; background: #eceff1; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
         .hidden { display: none; }
         .secao { border-bottom: 1px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
-        h3 { color: #007bff; font-size: 1.1em; margin-top: 20px; }
-        label { font-weight: bold; font-size: 0.9em; display: block; margin-top: 10px; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; background: #fafafa; }
-        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        h3 { color: #007bff; font-size: 1.1em; }
+        label { font-weight: bold; font-size: 0.85em; display: block; margin-top: 10px; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-principal { background: #007bff; color: white; }
         .btn-secundario { background: #28a745; color: white; }
-        .btn-export { background: #6c757d; color: white; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .barra-progresso { flex: 1; background: #eee; height: 15px; border-radius: 10px; overflow: hidden; display: flex; margin: 5px 0; }
-        .segmento { height: 100%; transition: width 0.5s ease; }
-        .busca-input { border: 2px solid #007bff; font-weight: bold; }
-        .bairro-item { display: flex; justify-content: space-between; font-size: 0.8em; padding: 3px 0; border-bottom: 1px dashed #ddd; }
     </style>
 </head>
 <body>
 
-    <div id="app" class="card">
-        <h2 style="text-align: center;">JGUA - Cadastro Offline</h2>
-        
-        <div id="secao-login">
-            <label>Código de Acesso:</label>
-            <input type="password" id="input-codigo" placeholder="Digite seu código">
-            <button class="btn-principal" onclick="autenticar()">Acessar Sistema</button>
-        </div>
+<div class="card">
+    <h2 style="text-align: center;">JGUA - Cadastro Offline</h2>
 
-        <div id="conteudo" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <span id="label-perfil" style="background: #333; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.8em;"></span>
-                <button onclick="location.reload()" style="width: auto; padding: 5px 15px; margin: 0; font-size: 0.8em; background: #dc3545; color: white;">Sair</button>
-            </div>
-
-            <div class="secao">
-                <h3>1. Identificação</h3>
-                <div class="grid-2">
-                    <select id="tipo"><option value="ASSOCIADO">ASSOCIADO</option><option value="ADEPTO">ADEPTO</option></select>
-                    <select id="origem"><option value="AUTO">AUTO</option><option value="TERCEIRO">TERCEIRO</option></select>
-                </div>
-                <div class="grid-2">
-                    <input type="text" id="nome" placeholder="Nome">
-                    <input type="text" id="sobrenome" placeholder="Sobrenome">
-                </div>
-                <div class="grid-2">
-                    <input type="text" id="cpf" placeholder="CPF" maxlength="14" oninput="mascaraCPF(this)">
-                    <select id="sexo">
-                        <option value="">Sexo...</option>
-                        <option value="M">Masculino</option>
-                        <option value="F">Feminino</option>
-                        <option value="O">Outro</option>
-                    </select>
-                </div>
-                <div class="grid-2">
-                    <div>
-                        <label>Nascimento:</label>
-                        <input type="date" id="nascimento" onchange="calcularIdadeVisual()">
-                    </div>
-                    <div>
-                        <label>Idade:</label>
-                        <input type="text" id="idade-visual" readonly style="background: #eee;">
-                    </div>
-                </div>
-            </div>
-
-            <div class="secao">
-                <h3>2. Endereço e Contato</h3>
-                <input type="text" id="cep" onblur="buscarCEP()" placeholder="CEP">
-                <input type="text" id="logradouro" placeholder="Rua/Avenida">
-                <div class="grid-2">
-                    <input type="text" id="bairro" placeholder="Bairro">
-                    <input type="text" id="numero" placeholder="Nº">
-                </div>
-                <div class="grid-2">
-                    <input type="tel" id="whatsapp" placeholder="WhatsApp">
-                    <input type="email" id="email" placeholder="E-mail">
-                </div>
-            </div>
-
-            <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
-
-            <div class="secao" style="background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-top: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0;">Estatísticas Geográficas</h3>
-                    <span id="contador-total" style="background: #007bff; color: white; padding: 2px 10px; border-radius: 10px; font-weight: bold;">0</span>
-                </div>
-
-                <label style="margin-top: 15px; display: block;">Top Bairros (Jaraguá do Sul):</label>
-                <div id="stats-bairros" style="margin-top: 5px; background: #fff; padding: 8px; border-radius: 5px; border: 1px solid #eee;">
-                    <small style="color:#999">Nenhum dado...</small>
-                </div>
-
-                <label style="margin-top:15px; display: block; font-size: 0.8em;">Gênero:</label>
-                <div class="barra-progresso">
-                    <div id="bar-masc" class="segmento" style="background: #007bff; width: 0%;"></div>
-                    <div id="bar-fem" class="segmento" style="background: #e83e8c; width: 0%;"></div>
-                    <div id="bar-outro" class="segmento" style="background: #6c757d; width: 0%;"></div>
-                </div>
-
-                <div style="font-size: 0.75em; display: flex; justify-content: space-between; margin-top: 10px;">
-                    <span>Média Idade: <strong id="media-idade">0</strong></span>
-                    <span>Perfil Associado: <strong id="perc-assoc">0%</strong></span>
-                </div>
-
-                <input type="text" id="input-busca" class="busca-input" style="margin-top: 15px;" placeholder="🔍 Buscar Nome, CPF ou Bairro..." onkeyup="atualizarMonitor()">
-                <div id="lista-cadastros" style="max-height: 150px; overflow-y: auto; font-size: 0.8em; background: white; border: 1px solid #eee; padding: 5px; margin-top: 10px;"></div>
-            </div>
-
-            <div id="painel-admin" class="secao hidden" style="background: #f0f7ff; padding: 15px; border: 1px solid #b3d7ff; border-radius: 8px;">
-                <h3 style="margin-top: 0;">Gestão Admin</h3>
-                <input type="text" id="novo-nome" placeholder="Nome">
-                <input type="password" id="novo-codigo" placeholder="Senha">
-                <select id="novo-perfil">
-                    <option value="CADASTRADOR">CADASTRADOR</option>
-                    <option value="GESTOR">GESTOR</option>
-                </select>
-                <button class="btn-principal" onclick="criarUsuario()">CADASTRAR</button>
-                <div id="lista-usuarios" style="font-size: 0.85em; background: white; padding: 5px; border-radius: 4px;"></div>
-            </div>
-
-            <button class="btn-export" onclick="exportarDados()">EXPORTAR BASE (JSON)</button>
-        </div>
+    <div id="secao-login">
+        <label>Código de Acesso:</label>
+        <input type="password" id="input-codigo" placeholder="Digite seu código">
+        <button class="btn-principal" onclick="autenticar()">Acessar Sistema</button>
     </div>
 
-    <script>
-        function mascaraCPF(i) {
-            let v = i.value.replace(/\D/g, "");
-            v = v.replace(/(\d{3})(\d)/, "$1.$2");
-            v = v.replace(/(\d{3})(\d)/, "$1.$2");
-            v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-            i.value = v;
-        }
+    <div id="conteudo" class="hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="label-perfil" style="background: #333; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.8em;"></span>
+            <button onclick="location.reload()" style="width: auto; padding: 5px 10px; background: #dc3545; color: white;">Sair</button>
+        </div>
 
-        function calcularIdadeVisual() {
-            const nasc = document.getElementById('nascimento').value;
-            if(!nasc) return;
-            const hoje = new Date();
-            const dataNasc = new Date(nasc);
-            let idade = hoje.getFullYear() - dataNasc.getFullYear();
-            const m = hoje.getMonth() - dataNasc.getMonth();
-            if (m < 0 || (m === 0 && hoje.getDate() < dataNasc.getDate())) idade--;
-            document.getElementById('idade-visual').value = idade + " anos";
-        }
+        <div class="secao">
+            <h3>1. Identificação</h3>
+            <div class="grid-2">
+                <div><label>Tipo:</label><select id="tipo"><option value="ASSOCIADO">ASSOCIADO</option><option value="ADEPTO">ADEPTO</option></select></div>
+                <div><label>Origem:</label><select id="origem"><option value="TERCEIRO">TERCEIRO</option><option value="AUTO">AUTO</option></select></div>
+            </div>
+            <div class="grid-2">
+                <input type="text" id="nome" placeholder="Nome">
+                <input type="text" id="sobrenome" placeholder="Sobrenome">
+            </div>
+            <div class="grid-2">
+                <input type="text" id="cpf" placeholder="CPF" maxlength="14" oninput="mascaraCPF(this)">
+                <select id="sexo"><option value="">Sexo...</option><option value="M">Masculino</option><option value="F">Feminino</option></select>
+            </div>
+            <label>Data de Nascimento:</label>
+            <input type="date" id="nascimento">
+        </div>
 
-        function autenticar() {
-            const cod = document.getElementById('input-codigo').value;
-            const tx = db.transaction("usuarios", "readonly");
-            const store = tx.objectStore("usuarios");
-            const consulta = store.get(cod);
-            consulta.onsuccess = () => {
-                const usuario = consulta.result;
-                if (usuario) {
-                    document.getElementById('label-perfil').innerText = usuario.perfil;
-                    document.getElementById('secao-login').classList.add('hidden');
-                    document.getElementById('conteudo').classList.remove('hidden');
-                    document.getElementById('cpf').type = (usuario.perfil === "GESTOR") ? "text" : "password";
-                    atualizarMonitor();
-                    if (usuario.perfil === "GESTOR") {
-                        document.getElementById('painel-admin').classList.remove('hidden');
-                        listarUsuarios(); 
-                    }
-                } else { alert("Código incorreto!"); }
-            };
-        }
-    </script>
+        <div class="secao">
+            <h3>2. Contatos e Redes Sociais</h3>
+            <div class="grid-2">
+                <input type="tel" id="whatsapp" placeholder="WhatsApp">
+                <input type="email" id="email" placeholder="E-mail">
+            </div>
+            <div class="grid-2">
+                <input type="text" id="instagram" placeholder="Instagram (@)">
+                <input type="text" id="telegram" placeholder="Telegram">
+            </div>
+        </div>
+
+        <div class="secao">
+            <h3>3. Endereço</h3>
+            <div class="grid-2">
+                <input type="text" id="cep" placeholder="CEP" onblur="buscarCEP()">
+                <input type="text" id="bairro" placeholder="Bairro">
+            </div>
+            <input type="text" id="logradouro" placeholder="Rua/Avenida">
+            <input type="text" id="numero" placeholder="Número">
+        </div>
+
+        <button class="btn-secundario" onclick="salvar()">SALVAR CADASTRO</button>
+
+        <div id="monitor" style="background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between;">
+                <strong>Total: <span id="contador-total">0</span></strong>
+                <small>Média Idade: <span id="media-idade">0</span></small>
+            </div>
+            <div id="stats-bairros" style="font-size: 0.8em; margin-top: 5px;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function mascaraCPF(i) {
+        let v = i.value.replace(/\D/g, "");
+        v = v.replace(/(\d{3})(\d)/, "$1.$2");
+        v = v.replace(/(\d{3})(\d)/, "$1.$2");
+        v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        i.value = v;
+    }
+
+    function autenticar() {
+        const cod = document.getElementById('input-codigo').value;
+        const perfis = {"1234": "GESTOR", "1111": "CADASTRADOR"};
+        if(perfis[cod]) {
+            document.getElementById('label-perfil').innerText = perfis[cod];
+            document.getElementById('secao-login').classList.add('hidden');
+            document.getElementById('conteudo').classList.remove('hidden');
+            if(perfis[cod] !== "GESTOR") document.getElementById('cpf').type = "password";
+            if(typeof atualizarMonitor === 'function') atualizarMonitor();
+        } else { alert("Código inválido!"); }
+    }
+</script>
 </body>
 </html>
