@@ -17,7 +17,6 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
-    console.log("Sistema JGUA - Operacional (Modo WhatsApp Ativo)");
     if(document.getElementById('contador-total')) atualizarMonitor();
     if(document.getElementById('lista-usuarios')) listarUsuarios();
 };
@@ -25,7 +24,7 @@ request.onsuccess = (e) => {
 // --- VALIDADOR DE CPF ---
 function validarCPF(cpf) {
     cpf = cpf.replace(/[^\d]+/g, '');
-    if (cpf == '' || cpf.length != 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    if (cpf.length != 11 || /^(\d)\1{10}$/.test(cpf)) return false;
     let add = 0;
     for (let i = 0; i < 9; i++) add += parseInt(cpf.charAt(i)) * (10 - i);
     let rev = 11 - (add % 11);
@@ -39,7 +38,7 @@ function validarCPF(cpf) {
     return true;
 }
 
-// --- AUTENTICAÇÃO ---
+// --- LOGIN E PERMISSÕES ---
 function autenticar() {
     const cod = document.getElementById('input-codigo').value;
     const tx = db.transaction("usuarios", "readonly");
@@ -47,44 +46,43 @@ function autenticar() {
     const consulta = store.get(cod);
 
     consulta.onsuccess = () => {
-        const usuario = consulta.result;
-        if (usuario) {
-            const perfil = usuario.perfil;
-            document.getElementById('label-perfil').innerText = perfil;
-            document.getElementById('label-nome-user').innerText = usuario.nome;
+        const u = consulta.result;
+        if (u) {
+            document.getElementById('label-perfil').innerText = u.perfil;
+            document.getElementById('label-nome-user').innerText = u.nome;
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
             
-            if(perfil === "CADASTRADOR") document.getElementById('monitor')?.classList.add('hidden');
-            if(perfil === "CADASTRADOR" || perfil === "VALIDADOR") document.getElementById('btn-exportar')?.classList.add('hidden');
-            if(perfil !== "GESTOR") document.getElementById('secao-admin-users')?.classList.add('hidden');
+            if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
+            if(u.perfil === "CADASTRADOR" || u.perfil === "VALIDADOR") document.getElementById('btn-exportar').classList.add('hidden');
+            if(u.perfil === "GESTOR") document.getElementById('secao-admin-users').classList.remove('hidden');
             
             atualizarMonitor();
         } else { alert("Código inválido!"); }
     };
 }
 
-// --- SALVAR COM CONFIRMAÇÃO DE WHATSAPP ---
+// --- SALVAR / EDITAR COM AUDITORIA ---
 async function salvar() {
+    const editId = document.getElementById('edit-id').value;
     const cpfValor = document.getElementById('cpf').value;
-    const whats = document.getElementById('whatsapp').value.replace(/\D/g, '');
     const nome = document.getElementById('nome').value.trim();
-    const sexo = document.getElementById('sexo').value;
-    const nasc = document.getElementById('nascimento').value;
+    const whats = document.getElementById('whatsapp').value.replace(/\D/g, '');
 
     if (!validarCPF(cpfValor)) return alert("CPF Inválido!");
-    if (!sexo || !nasc || !nome) return alert("Preencha Nome, CPF, Sexo e Nascimento!");
+    if (!nome) return alert("O Nome é obrigatório!");
 
-    const dataNasc = new Date(nasc);
-    let idade = new Date().getFullYear() - dataNasc.getFullYear();
+    const nasc = document.getElementById('nascimento').value;
+    const idade = nasc ? new Date().getFullYear() - new Date(nasc).getFullYear() : 0;
+    const userAtual = document.getElementById('label-nome-user').innerText;
 
     const registro = {
         tipo: document.getElementById('tipo').value,
-        origem: document.getElementById('origem').value || "EQUIPE",
+        origem: document.getElementById('origem').value,
         nome: nome,
         sobrenome: document.getElementById('sobrenome').value.trim(),
         cpf: cpfValor,
-        sexo: sexo,
+        sexo: document.getElementById('sexo').value,
         nascimento: nasc,
         idade: idade,
         whatsapp: whats,
@@ -93,74 +91,109 @@ async function salvar() {
         logradouro: document.getElementById('logradouro').value,
         bairro: document.getElementById('bairro').value,
         numero: document.getElementById('numero').value,
-        data_cadastro: new Date().toLocaleString(),
-        autor: document.getElementById('label-nome-user').innerText
+        data_cadastro: new Date().toLocaleString()
     };
+
+    // Auditoria
+    if (editId) {
+        registro.id = Number(editId);
+        registro.ultima_alteracao = `${userAtual} | ${new Date().toLocaleString()}`;
+    } else {
+        registro.autor = userAtual;
+    }
 
     try {
         fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
-        salvarLocalmente(registro, whats, nome);
-    } catch (e) { 
-        salvarLocalmente(registro, whats, nome); 
-    }
-}
-
-function salvarLocalmente(registro, whats, nome) {
-    const tx = db.transaction("cadastros", "readwrite");
-    const store = tx.objectStore("cadastros");
-    const requestAdd = store.add(registro);
-    
-    requestAdd.onsuccess = () => {
-        // Lógica de confirmação de WhatsApp
-        if (whats.length >= 10) {
-            if (confirm(`Cadastro de ${nome} realizado! Deseja enviar mensagem de confirmação via WhatsApp agora?`)) {
-                const msg = window.encodeURIComponent(`Olá ${nome}, seu cadastro no JGUA foi realizado com sucesso! Seja bem-vindo(a).`);
-                window.open(`https://api.whatsapp.com/send?phone=55${whats}&text=${msg}`, '_blank');
-            }
-        } else {
-            alert("Cadastro realizado com sucesso!");
-        }
         
-        limparCampos();
-        atualizarMonitor();
-    };
-    requestAdd.onerror = () => alert("ALERTA: Este CPF já foi cadastrado!");
+        const tx = db.transaction("cadastros", "readwrite");
+        const store = tx.objectStore("cadastros");
+        const req = editId ? store.put(registro) : store.add(registro);
+
+        req.onsuccess = () => {
+            if (!editId && whats.length >= 10) {
+                if (confirm("Deseja enviar WhatsApp de boas-vindas?")) {
+                    const msg = window.encodeURIComponent(`Olá ${nome}, seu cadastro no JGUA foi concluído!`);
+                    window.open(`https://api.whatsapp.com/send?phone=55${whats}&text=${msg}`, '_blank');
+                }
+            }
+            alert(editId ? "Cadastro atualizado!" : "Cadastro realizado!");
+            cancelarEdicao();
+            atualizarMonitor();
+        };
+        req.onerror = () => alert("Erro: CPF já existe!");
+    } catch (e) { alert("Erro ao salvar."); }
 }
 
-function limparCampos() {
+// --- CARREGAR PARA EDIÇÃO ---
+function prepararEdicao(id) {
+    db.transaction("cadastros", "readonly").objectStore("cadastros").get(id).onsuccess = (e) => {
+        const r = e.target.result;
+        document.getElementById('edit-id').value = r.id;
+        document.getElementById('nome').value = r.nome;
+        document.getElementById('sobrenome').value = r.sobrenome;
+        document.getElementById('cpf').value = r.cpf;
+        document.getElementById('tipo').value = r.tipo;
+        document.getElementById('sexo').value = r.sexo;
+        document.getElementById('nascimento').value = r.nascimento;
+        document.getElementById('whatsapp').value = r.whatsapp;
+        document.getElementById('email').value = r.email;
+        document.getElementById('cep').value = r.cep;
+        document.getElementById('bairro').value = r.bairro;
+        document.getElementById('logradouro').value = r.logradouro;
+        document.getElementById('numero').value = r.numero;
+
+        document.getElementById('titulo-form').innerText = "Editando Cadastro";
+        document.getElementById('botoes-acao').classList.add('hidden');
+        document.getElementById('botoes-edicao').classList.remove('hidden');
+        window.scrollTo(0,0);
+    };
+}
+
+function cancelarEdicao() {
+    document.getElementById('edit-id').value = "";
+    document.getElementById('titulo-form').innerText = "Novo Cadastro";
+    document.getElementById('botoes-acao').classList.remove('hidden');
+    document.getElementById('botoes-edicao').classList.add('hidden');
     ["nome", "sobrenome", "cpf", "nascimento", "whatsapp", "email", "cep", "logradouro", "bairro", "numero"].forEach(id => {
-        const el = document.getElementById(id); if(el) el.value = "";
+        document.getElementById(id).value = "";
     });
 }
 
-// --- MONITOR E ESTATÍSTICAS ---
+// --- MONITOR E BUSCA UNIVERSAL ---
 function atualizarMonitor() {
     if (!db || !document.getElementById('contador-total')) return;
-    const tx = db.transaction("cadastros", "readonly");
-    const store = tx.objectStore("cadastros");
+    const termo = document.getElementById('input-busca').value.toLowerCase();
     
-    store.getAll().onsuccess = (e) => {
+    db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
         const registros = e.target.result;
         const total = registros.length;
         document.getElementById('contador-total').innerText = total;
 
-        if (total > 0) {
-            const bairrosContagem = {};
-            registros.forEach(r => {
-                const b = r.bairro ? r.bairro.toUpperCase() : "NÃO INFORMADO";
-                bairrosContagem[b] = (bairrosContagem[b] || 0) + 1;
-            });
-            const ranking = Object.entries(bairrosContagem).sort((a,b) => b[1] - a[1]).slice(0, 5);
-            let bairrosHtml = "";
-            ranking.forEach(([nome, qtd]) => {
-                bairrosHtml += `<div style="display:flex; justify-content:space-between; font-size:0.8em; border-bottom:1px dashed #ccc; padding:2px 0;"><span>${nome}</span> <strong>${qtd}</strong></div>`;
-            });
-            document.getElementById('stats-bairros').innerHTML = bairrosHtml;
+        const filtrados = registros.filter(r => 
+            r.nome.toLowerCase().includes(termo) || 
+            r.sobrenome.toLowerCase().includes(termo) || 
+            r.cpf.includes(termo) || 
+            (r.bairro && r.bairro.toLowerCase().includes(termo))
+        );
 
-            const idades = registros.map(r => r.idade).filter(id => !isNaN(id));
-            const media = idades.length > 0 ? idades.reduce((a, b) => a + b, 0) / idades.length : 0;
-            document.getElementById('media-idade').innerText = Math.round(media);
-        }
+        let html = "";
+        filtrados.reverse().slice(0, 20).forEach(r => {
+            html += `
+                <div class="item-lista" onclick="prepararEdicao(${r.id})">
+                    <strong>${r.nome} ${r.sobrenome}</strong> <small>(${r.bairro || 'Sem Bairro'})</small><br>
+                    <span style="font-size:0.75em; color:#777;">CPF: ${r.cpf} | Idade: ${r.idade}</span>
+                </div>`;
+        });
+        document.getElementById('lista-cadastros').innerHTML = html || "Nenhum resultado.";
+
+        // Estatísticas simplificadas de Bairro
+        const bairros = {};
+        registros.forEach(r => { if(r.bairro) bairros[r.bairro.toUpperCase()] = (bairros[r.bairro.toUpperCase()] || 0) + 1; });
+        const ranking = Object.entries(bairros).sort((a,b) => b[1]-a[1]).slice(0,5);
+        document.getElementById('stats-bairros').innerHTML = "Top Bairros: " + ranking.map(b => `${b[0]}(${b[1]})`).join(" | ");
+        
+        const idades = registros.map(r => r.idade).filter(i => i > 0);
+        document.getElementById('media-idade').innerText = idades.length ? Math.round(idades.reduce((a,b)=>a+b)/idades.length) : 0;
     };
 }
 
@@ -175,7 +208,7 @@ async function buscarCEP() {
         if (r) {
             document.getElementById('logradouro').value = r[0].logradouro;
             document.getElementById('bairro').value = r[0].bairro;
-        }
+        } else { throw new Error(); }
     } catch (e) {
         fetch(`https://viacep.com.br/ws/${cep}/json/`).then(res => res.json()).then(d => {
             if(!d.erro) {
@@ -188,32 +221,28 @@ async function buscarCEP() {
 
 // --- GESTÃO DE USUÁRIOS ---
 function criarUsuario() {
-    const nome = document.getElementById('novo-nome').value.trim();
-    const codigo = document.getElementById('novo-codigo').value.trim();
+    const nome = document.getElementById('novo-nome').value;
+    const codigo = document.getElementById('novo-codigo').value;
     const perfil = document.getElementById('novo-perfil').value;
-    if (!nome || !codigo) return alert("Preencha Nome e Código!");
     db.transaction("usuarios", "readwrite").objectStore("usuarios").add({ codigo, nome, perfil }).onsuccess = () => {
-        alert("Integrante registrado!");
+        alert("Integrante criado!");
         listarUsuarios();
     };
 }
 
 function listarUsuarios() {
-    if(!document.getElementById('lista-usuarios')) return;
     db.transaction("usuarios", "readonly").objectStore("usuarios").getAll().onsuccess = (e) => {
-        let html = '<table style="width:100%; font-size:0.9em;">';
+        let html = "<table>";
         e.target.result.forEach(u => {
-            html += `<tr style="border-bottom:1px solid #eee;"><td>${u.nome} (${u.perfil})</td><td style="text-align:right;"><button onclick="excluirUsuario('${u.codigo}')">X</button></td></tr>`;
+            html += `<tr><td>${u.nome} (${u.perfil})</td><td><button onclick="excluirU('${u.codigo}')">X</button></td></tr>`;
         });
-        document.getElementById('lista-usuarios').innerHTML = html + '</table>';
+        document.getElementById('lista-usuarios').innerHTML = html + "</table>";
     };
 }
 
-function excluirUsuario(c) {
-    if(c === "1234") return alert("Não é possível excluir o Gestor Mestre!");
-    if(confirm("Remover este acesso?")) {
-        db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(c).onsuccess = () => listarUsuarios();
-    }
+function excluirU(c) {
+    if(c === "1234") return alert("Mestre não pode ser excluído.");
+    db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(c).onsuccess = () => listarUsuarios();
 }
 
 function exportarDados() {
@@ -221,7 +250,7 @@ function exportarDados() {
         const blob = new Blob([JSON.stringify(e.target.result, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `jgua_export_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+        a.download = `jgua_base_${new Date().getTime()}.json`;
         a.click();
     };
 }
