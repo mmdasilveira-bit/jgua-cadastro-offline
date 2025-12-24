@@ -1,6 +1,7 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbwYtG7KWEf9_yH4BvxmgNptrQNA1MtlMXPlro-TN_Kd2lrY-WoiGYcrc8sxDvziTEeFzA/exec"; 
 
 let db;
+// Mantemos a versão 4 para garantir a estrutura de CPF único
 const request = indexedDB.open("JGUA_DB", 4);
 
 request.onupgradeneeded = (e) => {
@@ -17,8 +18,7 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
-    console.log("Banco de dados carregado com sucesso!");
-    // Se estiver no index.html (painel administrativo), tenta carregar os dados
+    console.log("Sistema JGUA carregado com sucesso!");
     if(document.getElementById('contador-total')) {
         atualizarMonitor();
     }
@@ -41,7 +41,7 @@ function validarCPF(cpf) {
     return true;
 }
 
-// --- SALVAR (LOCAL + PLANILHA) ---
+// --- FUNÇÃO SALVAR (LOCAL + NUVEM) ---
 async function salvar() {
     const campoCpf = document.getElementById('cpf');
     const cpfValor = campoCpf.value;
@@ -49,7 +49,7 @@ async function salvar() {
     const nasc = document.getElementById('nascimento').value;
 
     if (!validarCPF(cpfValor)) return alert("CPF Inválido!");
-    if (!sexo || !nasc) return alert("Sexo e Data de Nascimento são obrigatórios!");
+    if (!sexo || !nasc) return alert("Preencha Nome, CPF, Sexo e Nascimento!");
 
     const dataNasc = new Date(nasc);
     let idade = new Date().getFullYear() - dataNasc.getFullYear();
@@ -70,29 +70,25 @@ async function salvar() {
         bairro: document.getElementById('bairro').value,
         numero: document.getElementById('numero').value,
         data_cadastro: new Date().toLocaleString(),
-        autor: document.getElementById('label-perfil')?.innerText || "CIDADAO"
+        autor: document.getElementById('label-perfil')?.innerText || "GESTOR MESTRE"
     };
 
+    // Tenta enviar para a Planilha Google
     try {
-        // Envia para a Planilha Google (assíncrono)
         fetch(URL_PLANILHA, {
             method: 'POST',
             mode: 'no-cors', 
             body: JSON.stringify(registro)
         });
-        
         salvarLocalmente(registro);
-        
     } catch (error) {
         salvarLocalmente(registro);
-        alert("Salvo localmente (sem conexão com a nuvem).");
     }
 }
 
 function salvarLocalmente(registro) {
     const tx = db.transaction("cadastros", "readwrite");
     const store = tx.objectStore("cadastros");
-    
     const requestAdd = store.add(registro);
     
     requestAdd.onsuccess = () => {
@@ -104,7 +100,6 @@ function salvarLocalmente(registro) {
             atualizarMonitor();
         }
     };
-    
     requestAdd.onerror = () => alert("Erro: CPF já cadastrado neste dispositivo!");
 }
 
@@ -136,7 +131,7 @@ function atualizarMonitor() {
             const ranking = Object.entries(bairrosContagem).sort((a,b) => b[1] - a[1]).slice(0, 5);
             let bairrosHtml = "";
             ranking.forEach(([nome, qtd]) => {
-                bairrosHtml += `<div style="display:flex; justify-content:space-between; font-size:0.8em; border-bottom:1px dashed #ccc;"><span>${nome}</span> <strong>${qtd}</strong></div>`;
+                bairrosHtml += `<div style="display:flex; justify-content:space-between; font-size:0.8em; border-bottom:1px dashed #ccc; padding:2px 0;"><span>${nome}</span> <strong>${qtd}</strong></div>`;
             });
             document.getElementById('stats-bairros').innerHTML = bairrosHtml;
 
@@ -155,7 +150,12 @@ function atualizarMonitor() {
             document.getElementById('perc-assoc').innerText = Math.round((assoc/total)*100) + "%";
         }
 
-        const filtrados = registros.filter(r => r.nome.toLowerCase().includes(termo) || r.cpf.includes(termo) || (r.bairro && r.bairro.toLowerCase().includes(termo)));
+        const filtrados = registros.filter(r => 
+            r.nome.toLowerCase().includes(termo) || 
+            r.cpf.includes(termo) || 
+            (r.bairro && r.bairro.toLowerCase().includes(termo))
+        );
+        
         const listaDiv = document.getElementById('lista-cadastros');
         let html = '<table style="width:100%; border-collapse: collapse;">';
         [...filtrados].reverse().slice(0, 10).forEach(r => {
@@ -182,41 +182,11 @@ async function buscarCEP() {
 
 // --- EXPORTAÇÃO ---
 function exportarDados() {
-    const perfil = document.getElementById('label-perfil').innerText;
     db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
-        let dados = e.target.result;
-        if (perfil !== "GESTOR") dados = dados.map(i => ({ ...i, cpf: "PROTEGIDO" }));
-        const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+        const blob = new Blob([JSON.stringify(e.target.result, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `cadastros.json`;
+        a.download = `cadastros_jgua.json`;
         a.click();
     };
-}
-
-// --- GESTÃO USUÁRIOS ---
-function criarUsuario() {
-    const nome = document.getElementById('novo-nome').value.trim();
-    const codigo = document.getElementById('novo-codigo').value.trim();
-    const perfil = document.getElementById('novo-perfil').value;
-    if (!nome || !codigo) return alert("Preencha tudo!");
-    db.transaction("usuarios", "readwrite").objectStore("usuarios").add({ codigo, nome, perfil }).onsuccess = () => {
-        alert("Cadastrado!");
-        listarUsuarios();
-    };
-}
-
-function listarUsuarios() {
-    if(!document.getElementById('lista-usuarios')) return;
-    db.transaction("usuarios", "readonly").objectStore("usuarios").getAll().onsuccess = (e) => {
-        let html = '<table style="width:100%">';
-        e.target.result.forEach(u => {
-            html += `<tr><td>${u.nome}</td><td><button onclick="excluirUsuario('${u.codigo}')" style="background:red; color:white; padding:2px 5px; border:none; border-radius:3px;">X</button></td></tr>`;
-        });
-        document.getElementById('lista-usuarios').innerHTML = html + '</table>';
-    };
-}
-
-function excluirUsuario(c) {
-    if(confirm("Excluir?")) db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(c).onsuccess = () => listarUsuarios();
 }
