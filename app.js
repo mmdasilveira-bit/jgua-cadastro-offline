@@ -237,7 +237,7 @@ function listarUsuarios() {
         });
         listaDiv.innerHTML = html + "</table>";
     };
-}
+
 
 function excluirU(codigo) {
     if(!confirm("Tem certeza que deseja remover este acesso?")) return;
