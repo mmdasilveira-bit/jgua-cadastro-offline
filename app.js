@@ -53,75 +53,101 @@ function autenticar() {
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
             
+            // Trava visual apenas para o monitor, mas a edição agora é permitida se o usuário buscar
             if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
-            if(u.perfil === "CADASTRADOR" || u.perfil === "VALIDADOR") document.getElementById('btn-exportar').classList.add('hidden');
-            if(u.perfil === "GESTOR") document.getElementById('secao-admin-users').classList.remove('hidden');
+            if(u.perfil === "CADASTRADOR" || u.perfil === "VALIDADOR") {
+                if(document.getElementById('btn-exportar')) document.getElementById('btn-exportar').classList.add('hidden');
+            }
+            if(u.perfil === "GESTOR") {
+                if(document.getElementById('secao-admin-users')) document.getElementById('secao-admin-users').classList.remove('hidden');
+            }
             
             atualizarMonitor();
         } else { alert("Código inválido!"); }
     };
 }
 
-// --- SALVAR / EDITAR COM AUDITORIA ---
+// --- SALVAR / EDITAR COM AUDITORIA (33 COLUNAS) ---
 async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const cpfValor = document.getElementById('cpf').value;
     const nome = document.getElementById('nome').value.trim();
-    const whats = document.getElementById('whatsapp').value.replace(/\D/g, '');
+    const userAtual = window.labelNomeUser_Forced || document.getElementById('label-nome-user')?.innerText || "SISTEMA";
 
     if (!validarCPF(cpfValor)) return alert("CPF Inválido!");
     if (!nome) return alert("O Nome é obrigatório!");
 
     const nasc = document.getElementById('nascimento').value;
-    const idade = nasc ? new Date().getFullYear() - new Date(nasc).getFullYear() : 0;
-    const userAtual = document.getElementById('label-nome-user').innerText;
+    const whats = document.getElementById('whatsapp').value.replace(/\D/g, '');
+    const idadeCalculada = nasc ? new Date().getFullYear() - new Date(nasc).getFullYear() : 0;
 
-   // Substitua o bloco do objeto 'registro' dentro da função salvar() no seu app.js
-const registro = {
-    tipo: document.getElementById('tipo').value, // Perfil
-    nome: nome,
-    sobrenome: document.getElementById('sobrenome').value.trim(),
-    cpf: cpfValor,
-    sexo: document.getElementById('sexo').value, // <-- LINHA REINCLUÍDA
-    nascimento: nasc,
-    whatsapp: whats,
-    email: document.getElementById('email').value,
-    cep: document.getElementById('cep').value,
-    logradouro: document.getElementById('logradouro').value,
-    bairro: document.getElementById('bairro').value,
-    numero: document.getElementById('numero').value,
-    origem: document.getElementById('origem').value, // TERCEIRO ou AUTO
-    data_cadastro: new Date().toLocaleString(), // Criado_Em
-    autor: window.labelNomeUser_Forced || document.getElementById('label-nome-user')?.innerText || "SISTEMA" // Criado_Por
-};
+    // Objeto completo para a Planilha e IndexedDB
+    const registro = {
+        tipo: document.getElementById('tipo').value, 
+        nome: nome,
+        sobrenome: document.getElementById('sobrenome').value.trim(),
+        cpf: cpfValor,
+        sexo: document.getElementById('sexo').value,
+        nascimento: nasc,
+        idade: idadeCalculada,
+        whatsapp: whats,
+        celular2: document.getElementById('celular2')?.value || "",
+        telefone_fixo: document.getElementById('telefone_fixo')?.value || "",
+        email: document.getElementById('email').value,
+        instagram: document.getElementById('instagram')?.value || "",
+        telegram: document.getElementById('telegram')?.value || "",
+        signal: document.getElementById('signal')?.value || "",
+        linkedin: document.getElementById('linkedin')?.value || "",
+        cep: document.getElementById('cep').value,
+        logradouro: document.getElementById('logradouro').value,
+        bairro: document.getElementById('bairro').value,
+        numero: document.getElementById('numero').value,
+        origem: document.getElementById('origem').value
+    };
 
-    // Auditoria
-  if (editId) {
+    if (editId) {
         registro.id = Number(editId);
-        const userAtual = window.labelNomeUser_Forced || document.getElementById('label-nome-user')?.innerText || "SISTEMA";
-        registro.ultima_alteracao = `${userAtual} | ${new Date().toLocaleString()}`;
+        registro.atualizado_por = userAtual;
+        registro.atualizado_em = new Date().toLocaleString();
+        // Preservamos a data de criação original no IndexedDB recuperando o registro antes de salvar
+    } else {
+        registro.criado_por = userAtual;
+        registro.criado_em = new Date().toLocaleString();
     }
 
     try {
+        // Envio para a Planilha Google
         fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
         
         const tx = db.transaction("cadastros", "readwrite");
         const store = tx.objectStore("cadastros");
-        const req = editId ? store.put(registro) : store.add(registro);
+        
+        let req;
+        if (editId) {
+            // Se for edição, buscamos o original para manter dados de criação que não estão no form
+            store.get(registro.id).onsuccess = (e) => {
+                const original = e.target.result;
+                registro.criado_por = original.criado_por;
+                registro.criado_em = original.criado_em;
+                store.put(registro);
+            };
+        } else {
+            store.add(registro);
+        }
 
-        req.onsuccess = () => {
-            if (!editId && whats.length >= 10) {
-                if (confirm("Deseja enviar WhatsApp de boas-vindas?")) {
-                    const msg = window.encodeURIComponent(`Olá ${nome}, seu cadastro no JGUA foi concluído!`);
-                    window.open(`https://api.whatsapp.com/send?phone=55${whats}&text=${msg}`, '_blank');
-                }
+        alert(editId ? "Cadastro atualizado!" : "Cadastro realizado!");
+        
+        // WhatsApp apenas para novos cadastros
+        if (!editId && whats.length >= 10) {
+            if (confirm("Deseja enviar WhatsApp de boas-vindas?")) {
+                const msg = window.encodeURIComponent(`Olá ${nome}, seu cadastro no JGUA foi concluído!`);
+                window.open(`https://api.whatsapp.com/send?phone=55${whats}&text=${msg}`, '_blank');
             }
-            alert(editId ? "Cadastro atualizado!" : "Cadastro realizado!");
-            cancelarEdicao();
-            atualizarMonitor();
-        };
-        req.onerror = () => alert("Erro: CPF já existe!");
-    } catch (e) { alert("Erro ao salvar."); }
+        }
+        
+        cancelarEdicao();
+        atualizarMonitor();
+    } catch (e) { alert("Erro ao processar."); }
 }
 
 // --- CARREGAR PARA EDIÇÃO ---
@@ -141,11 +167,19 @@ function prepararEdicao(id) {
         document.getElementById('bairro').value = r.bairro;
         document.getElementById('logradouro').value = r.logradouro;
         document.getElementById('numero').value = r.numero;
+        
+        // Novos campos (redes sociais e tel extra)
+        if(document.getElementById('celular2')) document.getElementById('celular2').value = r.celular2 || "";
+        if(document.getElementById('telefone_fixo')) document.getElementById('telefone_fixo').value = r.telefone_fixo || "";
+        if(document.getElementById('instagram')) document.getElementById('instagram').value = r.instagram || "";
+        if(document.getElementById('telegram')) document.getElementById('telegram').value = r.telegram || "";
+        if(document.getElementById('signal')) document.getElementById('signal').value = r.signal || "";
+        if(document.getElementById('linkedin')) document.getElementById('linkedin').value = r.linkedin || "";
 
-        document.getElementById('titulo-form').innerText = "Editando Cadastro";
+        document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
         document.getElementById('botoes-acao').classList.add('hidden');
         document.getElementById('botoes-edicao').classList.remove('hidden');
-        window.scrollTo(0,0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 }
 
@@ -154,8 +188,10 @@ function cancelarEdicao() {
     document.getElementById('titulo-form').innerText = "Novo Cadastro";
     document.getElementById('botoes-acao').classList.remove('hidden');
     document.getElementById('botoes-edicao').classList.add('hidden');
-    ["nome", "sobrenome", "cpf", "nascimento", "whatsapp", "email", "cep", "logradouro", "bairro", "numero"].forEach(id => {
-        document.getElementById(id).value = "";
+    const campos = ["nome", "sobrenome", "cpf", "nascimento", "whatsapp", "email", "cep", "logradouro", "bairro", "numero", "celular2", "telefone_fixo", "instagram", "telegram", "signal", "linkedin"];
+    campos.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
     });
 }
 
@@ -166,8 +202,7 @@ function atualizarMonitor() {
     
     db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
         const registros = e.target.result;
-        const total = registros.length;
-        document.getElementById('contador-total').innerText = total;
+        document.getElementById('contador-total').innerText = registros.length;
 
         const filtrados = registros.filter(r => 
             r.nome.toLowerCase().includes(termo) || 
@@ -186,7 +221,6 @@ function atualizarMonitor() {
         });
         document.getElementById('lista-cadastros').innerHTML = html || "Nenhum resultado.";
 
-        // Estatísticas simplificadas de Bairro
         const bairros = {};
         registros.forEach(r => { if(r.bairro) bairros[r.bairro.toUpperCase()] = (bairros[r.bairro.toUpperCase()] || 0) + 1; });
         const ranking = Object.entries(bairros).sort((a,b) => b[1]-a[1]).slice(0,5);
@@ -231,6 +265,7 @@ function criarUsuario() {
 }
 
 function listarUsuarios() {
+    if(!document.getElementById('lista-usuarios')) return;
     db.transaction("usuarios", "readonly").objectStore("usuarios").getAll().onsuccess = (e) => {
         let html = "<table>";
         e.target.result.forEach(u => {
