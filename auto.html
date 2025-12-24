@@ -7,19 +7,16 @@
     <link rel="manifest" href="manifest.json">
     <script src="app.js" defer></script>
     <style>
-        /* Estilos sincronizados com sua aplicação principal */
+        /* Estilos baseados em suas capturas de tela */
         body { font-family: 'Segoe UI', sans-serif; padding: 15px; background: #eceff1; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
-        .secao { border-bottom: 1px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
-        h2 { text-align: center; margin-bottom: 20px; color: #333; }
-        h3 { color: #007bff; font-size: 1.1em; margin-bottom: 15px; }
-        label { font-weight: bold; font-size: 0.85em; display: block; margin-top: 10px; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .btn-secundario { background: #28a745; color: white; transition: background 0.3s; }
-        .btn-secundario:hover { background: #218838; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .footer-auto { text-align: center; font-size: 0.8em; color: #666; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h2 { text-align: center; margin-bottom: 25px; color: #333; font-weight: bold; }
+        h3 { color: #007bff; font-size: 1.2em; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        label { font-weight: bold; font-size: 0.9em; display: block; margin-top: 15px; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1em; }
+        button { width: 100%; padding: 18px; margin-top: 25px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: #28a745; color: white; font-size: 1.1em; text-transform: uppercase; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .footer-auto { text-align: center; font-size: 0.85em; color: #666; margin-top: 25px; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -57,6 +54,8 @@
                 <input type="tel" id="whatsapp" placeholder="WhatsApp (DDD+Número)">
                 <input type="email" id="email" placeholder="E-mail">
             </div>
+            <input type="hidden" id="instagram" value="">
+            <input type="hidden" id="telegram" value="">
         </div>
 
         <div class="secao">
@@ -65,13 +64,13 @@
                 <input type="text" id="cep" placeholder="CEP" onblur="buscarCEP()">
                 <input type="text" id="bairro" placeholder="Bairro">
             </div>
-            <div class="grid-2" style="grid-template-columns: 3fr 1fr;">
-                <input type="text" id="logradouro" placeholder="Rua/Avenida">
+            <input type="text" id="logradouro" placeholder="Rua/Avenida">
+            <div class="grid-2" style="grid-template-columns: 1fr;">
                 <input type="text" id="numero" placeholder="Nº">
             </div>
         </div>
 
-        <button class="btn-secundario" onclick="salvarAuto()">FINALIZAR MEU CADASTRO</button>
+        <button onclick="salvarAuto()">FINALIZAR MEU CADASTRO</button>
 
         <div class="footer-auto">
             Ao clicar em finalizar, você concorda com o tratamento de seus dados para fins de cadastro.
@@ -80,7 +79,7 @@
 </div>
 
 <script>
-    // Injeta o identificador de sistema para o app.js registrar o autor corretamente
+    // Identifica o autor como sistema para o banco de dados e planilha
     function salvarAuto() {
         window.labelNomeUser_Forced = "SISTEMA-AUTO";
         if(typeof salvar === 'function') {
@@ -88,6 +87,7 @@
         }
     }
 
+    // Máscara de CPF idêntica à do painel principal
     function mascaraCPF(i) {
         let v = i.value.replace(/\D/g, "");
         v = v.replace(/(\d{3})(\d)/, "$1.$2");
