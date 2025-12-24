@@ -3,26 +3,28 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
 let db;
-// Versão 8 para garantir que seu Linux limpe qualquer resquício anterior
-const request = indexedDB.open("JGUA_DB", 8);
+// Subimos para 9 para forçar o sistema a criar o Gestor novamente
+const request = indexedDB.open("JGUA_DB", 9);
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
+    // Criando a tabela de cadastros (do Paulo)
     if (db.objectStoreNames.contains("cadastros")) db.deleteObjectStore("cadastros");
-    const store = db.createObjectStore("cadastros", { keyPath: "id" });
-    store.createIndex("cpf", "cpf", { unique: true });
+    db.createObjectStore("cadastros", { keyPath: "id" });
 
-    if (!db.objectStoreNames.contains("usuarios")) {
-        const userStore = db.createObjectStore("usuarios", { keyPath: "codigo" });
-        userStore.add({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
-    }
+    // Criando a tabela de usuários (do Gestor)
+    if (db.objectStoreNames.contains("usuarios")) db.deleteObjectStore("usuarios");
+    const userStore = db.createObjectStore("usuarios", { keyPath: "codigo" });
+    
+    // AQUI ESTÁ O SEU GESTOR DE VOLTA:
+    userStore.add({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
+    console.log("Gestor Mestre recriado com sucesso.");
 };
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
     sincronizarDadosDaNuvem(); 
     if(document.getElementById('contador-total')) atualizarMonitor();
-    if(document.getElementById('lista-usuarios')) listarUsuarios();
 };
 
 // --- SINCRONIZAÇÃO COM A NUVEM ---
