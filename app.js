@@ -1,4 +1,4 @@
-const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbwYtG7KWEf9_yH4BvxmgNptrQNA1MtlMXPlro-TN_Kd2lrY-WoiGYcrc8sxDvziTEeFzA/exec"; 
+const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbzE3FsLK93I5SFMiWLgbfiwqXKTUSEvShWqCkqk7-GJU7suzP5vBWRcDnRgDUZy_KtHfQ/exec"; 
 
 
 let db;
