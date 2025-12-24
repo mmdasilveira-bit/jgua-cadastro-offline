@@ -190,3 +190,60 @@ async function buscarCEP() {
         }
     });
 }
+// --- FUNÇÕES DE GESTÃO DE INTEGRANTES (COLE NO FINAL DO APP.JS) ---
+
+function criarUsuario() {
+    const nome = document.getElementById('novo-nome').value.trim();
+    const codigo = document.getElementById('novo-codigo').value.trim();
+    const perfil = document.getElementById('novo-perfil').value;
+
+    if(!nome || !codigo) return alert("Preencha o nome e o código de acesso!");
+
+    const tx = db.transaction("usuarios", "readwrite");
+    const store = tx.objectStore("usuarios");
+    
+    const request = store.add({ codigo, nome, perfil });
+    
+    request.onsuccess = () => {
+        alert("Integrante cadastrado com sucesso!");
+        document.getElementById('novo-nome').value = "";
+        document.getElementById('novo-codigo').value = "";
+        listarUsuarios(); // Atualiza a listinha embaixo
+    };
+    
+    request.onerror = () => alert("Este código já está em uso!");
+}
+
+function listarUsuarios() {
+    const listaDiv = document.getElementById('lista-usuarios');
+    if(!listaDiv || !db) return;
+
+    const tx = db.transaction("usuarios", "readonly");
+    const store = tx.objectStore("usuarios");
+    
+    store.getAll().onsuccess = (e) => {
+        const usuarios = e.target.result;
+        let html = "<table style='width:100%; border-collapse: collapse; font-size: 14px;'>";
+        
+        usuarios.forEach(u => {
+            html += `<tr style='border-bottom: 1px solid #eee; height: 45px;'>
+                <td><strong>${u.nome}</strong><br><span style='color: #666;'>${u.perfil}</span></td>
+                <td style='text-align:right;'>
+                    ${u.codigo !== "1234" ? 
+                    `<button onclick="excluirU('${u.codigo}')" style='background:#ff4d4d; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;'>X</button>` 
+                    : "<small>Mestre</small>"}
+                </td>
+            </tr>`;
+        });
+        listaDiv.innerHTML = html + "</table>";
+    };
+}
+
+function excluirU(codigo) {
+    if(!confirm("Tem certeza que deseja remover este acesso?")) return;
+    
+    const tx = db.transaction("usuarios", "readwrite");
+    tx.objectStore("usuarios").delete(codigo).onsuccess = () => {
+        listarUsuarios();
+    };
+}
