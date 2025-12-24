@@ -1,4 +1,5 @@
-const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbwYtG7KWEf9_yH4BvxmgNptrQNA1MtlMXPlro-TN_Kd2lrY-WoiGYcrc8sxDvziTEeFzA/exec"; 
+//https://script.google.com/macros/s/AKfycbxtf1UdgJyu-apju2YwBLGlZLSfozo_7YtsXYeohZQIEG-JvOsuFkfGtEwXQyHMVRSODQ/exec
+const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbxtf1UdgJyu-apju2YwBLGlZLSfozo_7YtsXYeohZQIEG-JvOsuFkfGtEwXQyHMVRSODQ/exec"; 
 
 let db;
 const request = indexedDB.open("JGUA_DB", 4);
