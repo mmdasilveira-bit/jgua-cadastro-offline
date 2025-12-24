@@ -1,5 +1,5 @@
-//https://script.google.com/macros/s/AKfycbxtf1UdgJyu-apju2YwBLGlZLSfozo_7YtsXYeohZQIEG-JvOsuFkfGtEwXQyHMVRSODQ/exec
-const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbxtf1UdgJyu-apju2YwBLGlZLSfozo_7YtsXYeohZQIEG-JvOsuFkfGtEwXQyHMVRSODQ/exec"; 
+//https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec
+const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
 let db;
 const request = indexedDB.open("JGUA_DB", 4);
@@ -7,7 +7,8 @@ const request = indexedDB.open("JGUA_DB", 4);
 request.onupgradeneeded = (e) => {
     db = e.target.result;
     if (!db.objectStoreNames.contains("cadastros")) {
-        const store = db.createObjectStore("cadastros", { keyPath: "id", autoIncrement: true });
+        // Mudamos autoIncrement para false porque o ID virá da planilha ou do código
+        const store = db.createObjectStore("cadastros", { keyPath: "id" });
         store.createIndex("cpf", "cpf", { unique: true });
     }
     if (!db.objectStoreNames.contains("usuarios")) {
