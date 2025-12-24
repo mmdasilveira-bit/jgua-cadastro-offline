@@ -1,7 +1,6 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbwYtG7KWEf9_yH4BvxmgNptrQNA1MtlMXPlro-TN_Kd2lrY-WoiGYcrc8sxDvziTEeFzA/exec"; 
 
 let db;
-// Mantemos a versão 4 para garantir a estrutura de CPF único
 const request = indexedDB.open("JGUA_DB", 4);
 
 request.onupgradeneeded = (e) => {
@@ -18,10 +17,9 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
-    console.log("Sistema JGUA carregado com sucesso!");
-    if(document.getElementById('contador-total')) {
-        atualizarMonitor();
-    }
+    console.log("Sistema JGUA - Operacional (Modo WhatsApp Ativo)");
+    if(document.getElementById('contador-total')) atualizarMonitor();
+    if(document.getElementById('lista-usuarios')) listarUsuarios();
 };
 
 // --- VALIDADOR DE CPF ---
@@ -41,85 +39,103 @@ function validarCPF(cpf) {
     return true;
 }
 
-// --- FUNÇÃO SALVAR (LOCAL + NUVEM) ---
+// --- AUTENTICAÇÃO ---
+function autenticar() {
+    const cod = document.getElementById('input-codigo').value;
+    const tx = db.transaction("usuarios", "readonly");
+    const store = tx.objectStore("usuarios");
+    const consulta = store.get(cod);
+
+    consulta.onsuccess = () => {
+        const usuario = consulta.result;
+        if (usuario) {
+            const perfil = usuario.perfil;
+            document.getElementById('label-perfil').innerText = perfil;
+            document.getElementById('label-nome-user').innerText = usuario.nome;
+            document.getElementById('secao-login').classList.add('hidden');
+            document.getElementById('conteudo').classList.remove('hidden');
+            
+            if(perfil === "CADASTRADOR") document.getElementById('monitor')?.classList.add('hidden');
+            if(perfil === "CADASTRADOR" || perfil === "VALIDADOR") document.getElementById('btn-exportar')?.classList.add('hidden');
+            if(perfil !== "GESTOR") document.getElementById('secao-admin-users')?.classList.add('hidden');
+            
+            atualizarMonitor();
+        } else { alert("Código inválido!"); }
+    };
+}
+
+// --- SALVAR COM CONFIRMAÇÃO DE WHATSAPP ---
 async function salvar() {
-    const campoCpf = document.getElementById('cpf');
-    const cpfValor = campoCpf.value;
+    const cpfValor = document.getElementById('cpf').value;
+    const whats = document.getElementById('whatsapp').value.replace(/\D/g, '');
+    const nome = document.getElementById('nome').value.trim();
     const sexo = document.getElementById('sexo').value;
     const nasc = document.getElementById('nascimento').value;
 
     if (!validarCPF(cpfValor)) return alert("CPF Inválido!");
-    if (!sexo || !nasc) return alert("Preencha Nome, CPF, Sexo e Nascimento!");
+    if (!sexo || !nasc || !nome) return alert("Preencha Nome, CPF, Sexo e Nascimento!");
 
     const dataNasc = new Date(nasc);
     let idade = new Date().getFullYear() - dataNasc.getFullYear();
 
-    // Captura TODOS os campos para enviar à planilha
     const registro = {
         tipo: document.getElementById('tipo').value,
-        origem: document.getElementById('origem').value || "AUTO",
-        nome: document.getElementById('nome').value.trim(),
+        origem: document.getElementById('origem').value || "EQUIPE",
+        nome: nome,
         sobrenome: document.getElementById('sobrenome').value.trim(),
         cpf: cpfValor,
         sexo: sexo,
         nascimento: nasc,
         idade: idade,
-        whatsapp: document.getElementById('whatsapp').value,
+        whatsapp: whats,
         email: document.getElementById('email').value,
         cep: document.getElementById('cep').value,
         logradouro: document.getElementById('logradouro').value,
         bairro: document.getElementById('bairro').value,
         numero: document.getElementById('numero').value,
         data_cadastro: new Date().toLocaleString(),
-        autor: document.getElementById('label-perfil')?.innerText || "GESTOR MESTRE"
+        autor: document.getElementById('label-nome-user').innerText
     };
 
-    // Tenta enviar para a Planilha Google
     try {
-        fetch(URL_PLANILHA, {
-            method: 'POST',
-            mode: 'no-cors', 
-            body: JSON.stringify(registro)
-        });
-        salvarLocalmente(registro);
-    } catch (error) {
-        console.log("Erro ao enviar para nuvem, salvando apenas local.");
-        salvarLocalmente(registro);
+        fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
+        salvarLocalmente(registro, whats, nome);
+    } catch (e) { 
+        salvarLocalmente(registro, whats, nome); 
     }
 }
 
-function salvarLocalmente(registro) {
+function salvarLocalmente(registro, whats, nome) {
     const tx = db.transaction("cadastros", "readwrite");
     const store = tx.objectStore("cadastros");
     const requestAdd = store.add(registro);
     
     requestAdd.onsuccess = () => {
-        alert("Cadastro realizado!");
-        if(window.location.pathname.includes("auto.html")) {
-            location.reload();
+        // Lógica de confirmação de WhatsApp
+        if (whats.length >= 10) {
+            if (confirm(`Cadastro de ${nome} realizado! Deseja enviar mensagem de confirmação via WhatsApp agora?`)) {
+                const msg = window.encodeURIComponent(`Olá ${nome}, seu cadastro no JGUA foi realizado com sucesso! Seja bem-vindo(a).`);
+                window.open(`https://api.whatsapp.com/send?phone=55${whats}&text=${msg}`, '_blank');
+            }
         } else {
-            limparCampos();
-            atualizarMonitor();
+            alert("Cadastro realizado com sucesso!");
         }
+        
+        limparCampos();
+        atualizarMonitor();
     };
-    requestAdd.onerror = () => alert("Erro: CPF já cadastrado neste dispositivo!");
+    requestAdd.onerror = () => alert("ALERTA: Este CPF já foi cadastrado!");
 }
 
 function limparCampos() {
     ["nome", "sobrenome", "cpf", "nascimento", "whatsapp", "email", "cep", "logradouro", "bairro", "numero"].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.value = "";
+        const el = document.getElementById(id); if(el) el.value = "";
     });
 }
 
-// --- MONITOR E ESTATÍSTICAS (Versão Completa Restaurada) ---
+// --- MONITOR E ESTATÍSTICAS ---
 function atualizarMonitor() {
     if (!db || !document.getElementById('contador-total')) return;
-    
-    // Busca o termo de pesquisa se o campo existir
-    const campoBusca = document.getElementById('input-busca');
-    const termo = campoBusca ? campoBusca.value.toLowerCase() : "";
-    
     const tx = db.transaction("cadastros", "readonly");
     const store = tx.objectStore("cadastros");
     
@@ -129,7 +145,6 @@ function atualizarMonitor() {
         document.getElementById('contador-total').innerText = total;
 
         if (total > 0) {
-            // Ranking de Bairros
             const bairrosContagem = {};
             registros.forEach(r => {
                 const b = r.bairro ? r.bairro.toUpperCase() : "NÃO INFORMADO";
@@ -142,79 +157,71 @@ function atualizarMonitor() {
             });
             document.getElementById('stats-bairros').innerHTML = bairrosHtml;
 
-            // Gráficos de Sexo
-            const masc = registros.filter(r => r.sexo === "M").length;
-            const fem = registros.filter(r => r.sexo === "F").length;
-            const outro = registros.filter(r => r.sexo === "O").length;
-            
-            if(document.getElementById('bar-masc')) {
-                document.getElementById('bar-masc').style.width = (masc / total * 100) + "%";
-                document.getElementById('bar-fem').style.width = (fem / total * 100) + "%";
-                document.getElementById('bar-outro').style.width = (outro / total * 100) + "%";
-            }
-
-            // Média de Idade
             const idades = registros.map(r => r.idade).filter(id => !isNaN(id));
             const media = idades.length > 0 ? idades.reduce((a, b) => a + b, 0) / idades.length : 0;
             document.getElementById('media-idade').innerText = Math.round(media);
-            
-            // Percentual Associados
-            const assoc = registros.filter(r => r.tipo === "ASSOCIADO").length;
-            if(document.getElementById('perc-assoc')) {
-                document.getElementById('perc-assoc').innerText = Math.round((assoc/total)*100) + "%";
-            }
-        }
-
-        const filtrados = registros.filter(r => 
-            r.nome.toLowerCase().includes(termo) || 
-            r.cpf.includes(termo) || 
-            (r.bairro && r.bairro.toLowerCase().includes(termo))
-        );
-        
-        const listaDiv = document.getElementById('lista-cadastros');
-        if(listaDiv) {
-            let html = '<table style="width:100%; border-collapse: collapse;">';
-            [...filtrados].reverse().slice(0, 10).forEach(r => {
-                html += `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 5px 0;"><strong>${r.nome}</strong> (${r.idade}a)<br><small>${r.bairro}</small></td></tr>`;
-            });
-            listaDiv.innerHTML = html + '</table>';
         }
     };
 }
 
-// --- BUSCA CEP (Versão Restaurada com arquivo local) ---
+// --- BUSCA CEP ---
 async function buscarCEP() {
     let cep = document.getElementById('cep').value.replace(/\D/g, '');
     if (cep.length !== 8) return;
     try {
         const response = await fetch('cep_base_jgs.json');
-        const baseLocal = await response.json();
-        const r = baseLocal[cep];
+        const base = await response.json();
+        const r = base[cep];
         if (r) {
             document.getElementById('logradouro').value = r[0].logradouro;
             document.getElementById('bairro').value = r[0].bairro;
         }
-    } catch (e) { 
-        console.log("CEP não encontrado no arquivo local. Tentando busca externa..."); 
-        // Busca externa reserva caso o arquivo local falhe
-        fetch(`https://viacep.com.br/ws/${cep}/json/`)
-            .then(res => res.json())
-            .then(data => {
-                if(!data.erro) {
-                    document.getElementById('logradouro').value = data.logradouro;
-                    document.getElementById('bairro').value = data.bairro;
-                }
-            });
+    } catch (e) {
+        fetch(`https://viacep.com.br/ws/${cep}/json/`).then(res => res.json()).then(d => {
+            if(!d.erro) {
+                document.getElementById('logradouro').value = d.logradouro;
+                document.getElementById('bairro').value = d.bairro;
+            }
+        });
     }
 }
 
-// --- EXPORTAÇÃO ---
+// --- GESTÃO DE USUÁRIOS ---
+function criarUsuario() {
+    const nome = document.getElementById('novo-nome').value.trim();
+    const codigo = document.getElementById('novo-codigo').value.trim();
+    const perfil = document.getElementById('novo-perfil').value;
+    if (!nome || !codigo) return alert("Preencha Nome e Código!");
+    db.transaction("usuarios", "readwrite").objectStore("usuarios").add({ codigo, nome, perfil }).onsuccess = () => {
+        alert("Integrante registrado!");
+        listarUsuarios();
+    };
+}
+
+function listarUsuarios() {
+    if(!document.getElementById('lista-usuarios')) return;
+    db.transaction("usuarios", "readonly").objectStore("usuarios").getAll().onsuccess = (e) => {
+        let html = '<table style="width:100%; font-size:0.9em;">';
+        e.target.result.forEach(u => {
+            html += `<tr style="border-bottom:1px solid #eee;"><td>${u.nome} (${u.perfil})</td><td style="text-align:right;"><button onclick="excluirUsuario('${u.codigo}')">X</button></td></tr>`;
+        });
+        document.getElementById('lista-usuarios').innerHTML = html + '</table>';
+    };
+}
+
+function excluirUsuario(c) {
+    if(c === "1234") return alert("Não é possível excluir o Gestor Mestre!");
+    if(confirm("Remover este acesso?")) {
+        db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(c).onsuccess = () => listarUsuarios();
+    }
+}
+
 function exportarDados() {
     db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
         const blob = new Blob([JSON.stringify(e.target.result, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `cadastros_jgua_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+        a.download = `jgua_export_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
         a.click();
     };
 }
