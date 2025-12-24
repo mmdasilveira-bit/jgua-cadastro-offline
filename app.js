@@ -76,23 +76,24 @@ async function salvar() {
     const idade = nasc ? new Date().getFullYear() - new Date(nasc).getFullYear() : 0;
     const userAtual = document.getElementById('label-nome-user').innerText;
 
-    const registro = {
-        tipo: document.getElementById('tipo').value,
-        origem: document.getElementById('origem').value,
-        nome: nome,
-        sobrenome: document.getElementById('sobrenome').value.trim(),
-        cpf: cpfValor,
-        sexo: document.getElementById('sexo').value,
-        nascimento: nasc,
-        idade: idade,
-        whatsapp: whats,
-        email: document.getElementById('email').value,
-        cep: document.getElementById('cep').value,
-        logradouro: document.getElementById('logradouro').value,
-        bairro: document.getElementById('bairro').value,
-        numero: document.getElementById('numero').value,
-        data_cadastro: new Date().toLocaleString()
-    };
+   // Substitua o bloco do objeto 'registro' dentro da função salvar() no seu app.js
+const registro = {
+    tipo: document.getElementById('tipo').value, // Perfil
+    nome: nome,
+    sobrenome: document.getElementById('sobrenome').value.trim(),
+    cpf: cpfValor,
+    sexo: document.getElementById('sexo').value, // <-- LINHA REINCLUÍDA
+    nascimento: nasc,
+    whatsapp: whats,
+    email: document.getElementById('email').value,
+    cep: document.getElementById('cep').value,
+    logradouro: document.getElementById('logradouro').value,
+    bairro: document.getElementById('bairro').value,
+    numero: document.getElementById('numero').value,
+    origem: document.getElementById('origem').value, // TERCEIRO ou AUTO
+    data_cadastro: new Date().toLocaleString(), // Criado_Em
+    autor: window.labelNomeUser_Forced || document.getElementById('label-nome-user')?.innerText || "SISTEMA" // Criado_Por
+};
 
     // Auditoria
     if (editId) {
