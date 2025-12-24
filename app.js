@@ -1,6 +1,7 @@
-const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbzE3FsLK93I5SFMiWLgbfiwqXKTUSEvShWqCkqk7-GJU7suzP5vBWRcDnRgDUZy_KtHfQ/exec"; 
+const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbwYtG7KWEf9_yH4BvxmgNptrQNA1MtlMXPlro-TN_Kd2lrY-WoiGYcrc8sxDvziTEeFzA/exec"; 
 
 let db;
+// Mantemos a versão 4 para garantir a estrutura de CPF único
 const request = indexedDB.open("JGUA_DB", 4);
 
 request.onupgradeneeded = (e) => {
@@ -17,34 +18,54 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
-    console.log("Sistema JGUA carregado.");
-    if(document.getElementById('contador-total')) atualizarMonitor();
+    console.log("Sistema JGUA carregado com sucesso!");
+    if(document.getElementById('contador-total')) {
+        atualizarMonitor();
+    }
 };
 
-// --- FUNÇÃO SALVAR (CAPTURA TODOS OS CAMPOS) ---
+// --- VALIDADOR DE CPF ---
+function validarCPF(cpf) {
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf == '' || cpf.length != 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let add = 0;
+    for (let i = 0; i < 9; i++) add += parseInt(cpf.charAt(i)) * (10 - i);
+    let rev = 11 - (add % 11);
+    if (rev == 10 || rev == 11) rev = 0;
+    if (rev != parseInt(cpf.charAt(9))) return false;
+    add = 0;
+    for (let i = 0; i < 10; i++) add += parseInt(cpf.charAt(i)) * (11 - i);
+    rev = 11 - (add % 11);
+    if (rev == 10 || rev == 11) rev = 0;
+    if (rev != parseInt(cpf.charAt(10))) return false;
+    return true;
+}
+
+// --- FUNÇÃO SALVAR (LOCAL + NUVEM) ---
 async function salvar() {
-    // Verificações Básicas
-    const cpfValor = document.getElementById('cpf').value;
-    const nome = document.getElementById('nome').value.trim();
-    if (!nome || !cpfValor) return alert("Nome e CPF são obrigatórios!");
-
+    const campoCpf = document.getElementById('cpf');
+    const cpfValor = campoCpf.value;
+    const sexo = document.getElementById('sexo').value;
     const nasc = document.getElementById('nascimento').value;
-    const dataNasc = new Date(nasc);
-    let idadeCalculada = new Date().getFullYear() - dataNasc.getFullYear();
 
-    // Criando o objeto com TODOS os campos para a planilha
+    if (!validarCPF(cpfValor)) return alert("CPF Inválido!");
+    if (!sexo || !nasc) return alert("Preencha Nome, CPF, Sexo e Nascimento!");
+
+    const dataNasc = new Date(nasc);
+    let idade = new Date().getFullYear() - dataNasc.getFullYear();
+
+    // Captura TODOS os campos para enviar à planilha
     const registro = {
         tipo: document.getElementById('tipo').value,
         origem: document.getElementById('origem').value || "AUTO",
-        nome: nome,
+        nome: document.getElementById('nome').value.trim(),
         sobrenome: document.getElementById('sobrenome').value.trim(),
         cpf: cpfValor,
+        sexo: sexo,
         nascimento: nasc,
-        idade: idadeCalculada,
+        idade: idade,
         whatsapp: document.getElementById('whatsapp').value,
         email: document.getElementById('email').value,
-        instagram: document.getElementById('instagram')?.value || "",
-        telegram: document.getElementById('telegram')?.value || "",
         cep: document.getElementById('cep').value,
         logradouro: document.getElementById('logradouro').value,
         bairro: document.getElementById('bairro').value,
@@ -53,17 +74,16 @@ async function salvar() {
         autor: document.getElementById('label-perfil')?.innerText || "GESTOR MESTRE"
     };
 
+    // Tenta enviar para a Planilha Google
     try {
-        // Envio para o Google Sheets
         fetch(URL_PLANILHA, {
             method: 'POST',
             mode: 'no-cors', 
             body: JSON.stringify(registro)
         });
-        
         salvarLocalmente(registro);
     } catch (error) {
-        console.error("Erro na nuvem, salvando apenas local.");
+        console.log("Erro ao enviar para nuvem, salvando apenas local.");
         salvarLocalmente(registro);
     }
 }
@@ -74,53 +94,127 @@ function salvarLocalmente(registro) {
     const requestAdd = store.add(registro);
     
     requestAdd.onsuccess = () => {
-        alert("Sucesso! Dados salvos e enviados.");
-        limparCampos();
-        atualizarMonitor();
+        alert("Cadastro realizado!");
+        if(window.location.pathname.includes("auto.html")) {
+            location.reload();
+        } else {
+            limparCampos();
+            atualizarMonitor();
+        }
     };
-    requestAdd.onerror = () => alert("Erro: Este CPF já existe!");
+    requestAdd.onerror = () => alert("Erro: CPF já cadastrado neste dispositivo!");
 }
 
 function limparCampos() {
-    const campos = ["nome", "sobrenome", "cpf", "nascimento", "whatsapp", "email", "cep", "logradouro", "bairro", "numero", "instagram", "telegram"];
-    campos.forEach(id => {
+    ["nome", "sobrenome", "cpf", "nascimento", "whatsapp", "email", "cep", "logradouro", "bairro", "numero"].forEach(id => {
         const el = document.getElementById(id);
         if(el) el.value = "";
     });
 }
 
-// --- MONITOR DE DADOS ---
+// --- MONITOR E ESTATÍSTICAS (Versão Completa Restaurada) ---
 function atualizarMonitor() {
     if (!db || !document.getElementById('contador-total')) return;
+    
+    // Busca o termo de pesquisa se o campo existir
+    const campoBusca = document.getElementById('input-busca');
+    const termo = campoBusca ? campoBusca.value.toLowerCase() : "";
+    
     const tx = db.transaction("cadastros", "readonly");
     const store = tx.objectStore("cadastros");
     
     store.getAll().onsuccess = (e) => {
         const registros = e.target.result;
-        document.getElementById('contador-total').innerText = registros.length;
+        const total = registros.length;
+        document.getElementById('contador-total').innerText = total;
+
+        if (total > 0) {
+            // Ranking de Bairros
+            const bairrosContagem = {};
+            registros.forEach(r => {
+                const b = r.bairro ? r.bairro.toUpperCase() : "NÃO INFORMADO";
+                bairrosContagem[b] = (bairrosContagem[b] || 0) + 1;
+            });
+            const ranking = Object.entries(bairrosContagem).sort((a,b) => b[1] - a[1]).slice(0, 5);
+            let bairrosHtml = "";
+            ranking.forEach(([nome, qtd]) => {
+                bairrosHtml += `<div style="display:flex; justify-content:space-between; font-size:0.8em; border-bottom:1px dashed #ccc; padding:2px 0;"><span>${nome}</span> <strong>${qtd}</strong></div>`;
+            });
+            document.getElementById('stats-bairros').innerHTML = bairrosHtml;
+
+            // Gráficos de Sexo
+            const masc = registros.filter(r => r.sexo === "M").length;
+            const fem = registros.filter(r => r.sexo === "F").length;
+            const outro = registros.filter(r => r.sexo === "O").length;
+            
+            if(document.getElementById('bar-masc')) {
+                document.getElementById('bar-masc').style.width = (masc / total * 100) + "%";
+                document.getElementById('bar-fem').style.width = (fem / total * 100) + "%";
+                document.getElementById('bar-outro').style.width = (outro / total * 100) + "%";
+            }
+
+            // Média de Idade
+            const idades = registros.map(r => r.idade).filter(id => !isNaN(id));
+            const media = idades.length > 0 ? idades.reduce((a, b) => a + b, 0) / idades.length : 0;
+            document.getElementById('media-idade').innerText = Math.round(media);
+            
+            // Percentual Associados
+            const assoc = registros.filter(r => r.tipo === "ASSOCIADO").length;
+            if(document.getElementById('perc-assoc')) {
+                document.getElementById('perc-assoc').innerText = Math.round((assoc/total)*100) + "%";
+            }
+        }
+
+        const filtrados = registros.filter(r => 
+            r.nome.toLowerCase().includes(termo) || 
+            r.cpf.includes(termo) || 
+            (r.bairro && r.bairro.toLowerCase().includes(termo))
+        );
         
-        // Atualiza lista visual (últimos 5)
         const listaDiv = document.getElementById('lista-cadastros');
         if(listaDiv) {
-            let html = '<table style="width:100%; font-size: 0.8em;">';
-            registros.reverse().slice(0, 5).forEach(r => {
-                html += `<tr style="border-bottom: 1px solid #eee;"><td>${r.nome}</td><td>${r.bairro}</td></tr>`;
+            let html = '<table style="width:100%; border-collapse: collapse;">';
+            [...filtrados].reverse().slice(0, 10).forEach(r => {
+                html += `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 5px 0;"><strong>${r.nome}</strong> (${r.idade}a)<br><small>${r.bairro}</small></td></tr>`;
             });
             listaDiv.innerHTML = html + '</table>';
         }
     };
 }
 
-// --- BUSCA CEP ---
+// --- BUSCA CEP (Versão Restaurada com arquivo local) ---
 async function buscarCEP() {
     let cep = document.getElementById('cep').value.replace(/\D/g, '');
     if (cep.length !== 8) return;
     try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        const data = await response.json();
-        if (!data.erro) {
-            document.getElementById('logradouro').value = data.logradouro;
-            document.getElementById('bairro').value = data.bairro;
+        const response = await fetch('cep_base_jgs.json');
+        const baseLocal = await response.json();
+        const r = baseLocal[cep];
+        if (r) {
+            document.getElementById('logradouro').value = r[0].logradouro;
+            document.getElementById('bairro').value = r[0].bairro;
         }
-    } catch (e) { console.log("Erro CEP"); }
+    } catch (e) { 
+        console.log("CEP não encontrado no arquivo local. Tentando busca externa..."); 
+        // Busca externa reserva caso o arquivo local falhe
+        fetch(`https://viacep.com.br/ws/${cep}/json/`)
+            .then(res => res.json())
+            .then(data => {
+                if(!data.erro) {
+                    document.getElementById('logradouro').value = data.logradouro;
+                    document.getElementById('bairro').value = data.bairro;
+                }
+            });
+    }
+}
+
+// --- EXPORTAÇÃO ---
+function exportarDados() {
+    db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
+        const blob = new Blob([JSON.stringify(e.target.result, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `cadastros_jgua_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+        a.click();
+    };
 }
