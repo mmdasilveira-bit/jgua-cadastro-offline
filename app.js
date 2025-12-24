@@ -1,5 +1,6 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbwYtG7KWEf9_yH4BvxmgNptrQNA1MtlMXPlro-TN_Kd2lrY-WoiGYcrc8sxDvziTEeFzA/exec"; 
 
+
 let db;
 // Mantemos a versão 4 para garantir a estrutura de CPF único
 const request = indexedDB.open("JGUA_DB", 4);
