@@ -3,39 +3,40 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
 let db;
-// Subimos para a versão 12 para garantir que o Linux limpe o banco e aceite os dados da nuvem
-const request = indexedDB.open("JGUA_DB", 12);
+// Mudamos o nome do banco para garantir que o Linux crie um novo do zero
+const request = indexedDB.open("JGUA_FINAL_DB", 1);
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
-    if (db.objectStoreNames.contains("cadastros")) db.deleteObjectStore("cadastros");
-    if (db.objectStoreNames.contains("usuarios")) db.deleteObjectStore("usuarios");
+    const store = db.createObjectStore("cadastros", { keyPath: "id" });
+    store.createIndex("cpf", "cpf", { unique: true });
 
-    db.createObjectStore("cadastros", { keyPath: "id" });
     const userStore = db.createObjectStore("usuarios", { keyPath: "codigo" });
     userStore.add({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
 };
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
+    console.log("Banco JGUA_FINAL_DB aberto com sucesso.");
     sincronizarDadosDaNuvem();
-    if(document.getElementById('contador-total')) atualizarMonitor();
-    if(document.getElementById('lista-usuarios')) listarUsuarios();
 };
 
-// --- SINCRONIZAÇÃO (BUSCA O PAULO E OUTROS) ---
+// --- SINCRONIZAÇÃO (BUSCA O PAULO) ---
 async function sincronizarDadosDaNuvem() {
     try {
         const response = await fetch(URL_PLANILHA, { method: "GET", redirect: "follow" });
         const registrosNuvem = await response.json();
+        
         const tx = db.transaction("cadastros", "readwrite");
         const store = tx.objectStore("cadastros");
+        
         registrosNuvem.forEach(reg => { if (reg.id) store.put(reg); });
+        
         tx.oncomplete = () => {
-            console.log("Sincronização concluída com " + registrosNuvem.length + " registros.");
-            atualizarMonitor();
+            console.log("Dados sincronizados: " + registrosNuvem.length);
+            if(document.getElementById('contador-total')) atualizarMonitor();
         };
-    } catch (error) { console.error("Erro na nuvem:", error); }
+    } catch (error) { console.error("Falha na sincronização:", error); }
 }
 
 // --- LOGIN ---
@@ -50,10 +51,9 @@ function autenticar() {
             document.getElementById('label-nome-user').innerText = u.nome;
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
-            if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
-            if(u.perfil === "GESTOR") document.getElementById('secao-admin-users')?.classList.remove('hidden');
             
-            // Forçamos as listas a carregarem no login
+            if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
+            
             atualizarMonitor();
             listarUsuarios();
         } else { alert("Código inválido!"); }
@@ -64,9 +64,11 @@ function autenticar() {
 function atualizarMonitor() {
     if (!db || !document.getElementById('contador-total')) return;
     const termo = document.getElementById('input-busca').value.toLowerCase();
+    
     db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
         const registros = e.target.result;
         document.getElementById('contador-total').innerText = registros.length;
+        
         const filtrados = registros.filter(r => 
             (r.nome||"").toLowerCase().includes(termo) || 
             (r.sobrenome||"").toLowerCase().includes(termo) || 
@@ -129,8 +131,6 @@ async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const nome = document.getElementById('nome').value.trim();
     const cpf = document.getElementById('cpf').value;
-    const userAtual = document.getElementById('label-nome-user')?.innerText || "SISTEMA";
-
     if (!nome || !cpf) return alert("Nome e CPF obrigatórios!");
 
     const registro = {
@@ -142,7 +142,7 @@ async function salvar() {
         cpf: cpf,
         whatsapp: document.getElementById('whatsapp').value,
         bairro: document.getElementById('bairro').value,
-        criado_por: userAtual,
+        criado_por: document.getElementById('label-nome-user').innerText,
         criado_em: new Date().toLocaleString()
     };
 
