@@ -1,7 +1,7 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
 let db;
-// Mudamos o nome do banco para garantir que o Linux crie um novo do zero
+// Mantemos JGUA_FINAL_DB para garantir um ambiente limpo no seu Linux
 const request = indexedDB.open("JGUA_FINAL_DB", 1);
 
 request.onupgradeneeded = (e) => {
@@ -15,29 +15,24 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
-    console.log("Banco JGUA_FINAL_DB aberto com sucesso.");
+    console.log("Banco JGUA_FINAL_DB aberto.");
     sincronizarDadosDaNuvem();
 };
 
-// --- SINCRONIZAÇÃO (BUSCA O PAULO) ---
 async function sincronizarDadosDaNuvem() {
     try {
         const response = await fetch(URL_PLANILHA, { method: "GET", redirect: "follow" });
         const registrosNuvem = await response.json();
-        
         const tx = db.transaction("cadastros", "readwrite");
         const store = tx.objectStore("cadastros");
-        
         registrosNuvem.forEach(reg => { if (reg.id) store.put(reg); });
-        
         tx.oncomplete = () => {
-            console.log("Dados sincronizados: " + registrosNuvem.length);
+            console.log("Sincronização OK: " + registrosNuvem.length);
             if(document.getElementById('contador-total')) atualizarMonitor();
         };
     } catch (error) { console.error("Falha na sincronização:", error); }
 }
 
-// --- LOGIN ---
 function autenticar() {
     const cod = document.getElementById('input-codigo').value;
     const tx = db.transaction("usuarios", "readonly");
@@ -49,50 +44,40 @@ function autenticar() {
             document.getElementById('label-nome-user').innerText = u.nome;
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
-            
             if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
             
             atualizarMonitor();
-            listarUsuarios();
+            listarUsuarios(); // Garante que a lista de gestores apareça
         } else { alert("Código inválido!"); }
     };
 }
 
-// --- MONITOR E BUSCA ---
 function atualizarMonitor() {
     if (!db || !document.getElementById('contador-total')) return;
     const termo = document.getElementById('input-busca').value.toLowerCase();
-    
     db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
         const registros = e.target.result;
         document.getElementById('contador-total').innerText = registros.length;
-        
         const filtrados = registros.filter(r => 
             (r.nome||"").toLowerCase().includes(termo) || 
             (r.sobrenome||"").toLowerCase().includes(termo) || 
             (r.cpf||"").includes(termo) ||
             (r.bairro||"").toLowerCase().includes(termo)
         );
-
         let html = "";
         filtrados.reverse().slice(0, 20).forEach(r => {
-            html += `
-                <div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
-                    <strong>${r.nome} ${r.sobrenome||""}</strong> <small>(${r.bairro || 'Sem Bairro'})</small><br>
-                    <span style="font-size:0.75em; color:#777;">CPF: ${r.cpf}</span>
-                </div>`;
+            html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
+                <strong>${r.nome} ${r.sobrenome||""}</strong><br><small>CPF: ${r.cpf}</small></div>`;
         });
         document.getElementById('lista-cadastros').innerHTML = html || "Nenhum resultado.";
     };
 }
 
-// --- GESTÃO DE INTEGRANTES ---
 function criarUsuario() {
     const nome = document.getElementById('novo-nome').value.trim();
     const codigo = document.getElementById('novo-codigo').value.trim();
     const perfil = document.getElementById('novo-perfil').value;
     if(!nome || !codigo) return alert("Preencha nome e código!");
-
     const tx = db.transaction("usuarios", "readwrite");
     tx.objectStore("usuarios").add({ codigo, nome, perfil }).onsuccess = () => {
         alert("Cadastrado!");
@@ -124,13 +109,11 @@ function excluirU(c) {
     }
 }
 
-// --- SALVAR E EDITAR ---
 async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const nome = document.getElementById('nome').value.trim();
     const cpf = document.getElementById('cpf').value;
     if (!nome || !cpf) return alert("Nome e CPF obrigatórios!");
-
     const registro = {
         id: editId || "CAD-" + new Date().getTime(),
         tipo: document.getElementById('tipo').value, 
@@ -143,7 +126,6 @@ async function salvar() {
         criado_por: document.getElementById('label-nome-user').innerText,
         criado_em: new Date().toLocaleString()
     };
-
     fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
     const tx = db.transaction("cadastros", "readwrite");
     tx.objectStore("cadastros").put(registro);
@@ -175,6 +157,3 @@ async function buscarCEP() {
         });
     }
 }
-}
-
-
