@@ -32,6 +32,33 @@ request.onupgradeneeded = (e) => {
     }
 };
 
+async function sincronizarDadosDaNuvem() {
+    try {
+        // O "?t=" força o navegador a buscar dados novos na planilha
+        const response = await fetch(URL_PLANILHA + "?t=" + new Date().getTime(), { 
+            method: "GET", 
+            redirect: "follow",
+            cache: "no-store" 
+        });
+        
+        const registrosNuvem = await response.json();
+        if (!registrosNuvem || registrosNuvem.length === 0) return;
+
+        const tx = db.transaction("cadastros", "readwrite");
+        const store = tx.objectStore("cadastros");
+        
+        registrosNuvem.forEach(reg => { 
+            if (reg.id) store.put(reg); 
+        });
+        
+        tx.oncomplete = () => {
+            console.log("Sincronia concluída com sucesso!");
+            atualizarMonitor();
+        };
+    } catch (error) { 
+        console.error("Erro na busca da nuvem:", error); 
+    }
+}
 
 function autenticar() {
     const cod = document.getElementById('input-codigo').value;
