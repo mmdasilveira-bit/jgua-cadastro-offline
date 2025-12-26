@@ -161,13 +161,29 @@ function excluirU(c) {
 function prepararEdicao(id) {
     db.transaction("cadastros", "readonly").objectStore("cadastros").get(id).onsuccess = (e) => {
         const r = e.target.result;
-        document.getElementById('edit-id').value = r.id;
         const campos = ["nome", "sobrenome", "cpf", "whatsapp", "bairro", "tipo", "origem"];
-        campos.forEach(c => { if(document.getElementById(c)) document.getElementById(c).value = r[c] || ""; });
-        document.getElementById('titulo-form').innerText = "Editar";
+        campos.forEach(c => { 
+            if(document.getElementById(c)) document.getElementById(c).value = r[c] || ""; 
+        });
+        document.getElementById('edit-id').value = r.id;
+        document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
         document.getElementById('botoes-acao').classList.add('hidden');
         document.getElementById('botoes-edicao').classList.remove('hidden');
     };
 }
 
-function cancelarEdicao() { location.reload(); }
+function cancelarEdicao() { 
+    location.reload(); 
+}
+
+async function buscarCEP() {
+    let cep = document.getElementById('cep').value.replace(/\D/g, '');
+    if (cep.length === 8) {
+        fetch(`https://viacep.com.br/ws/${cep}/json/`).then(res => res.json()).then(d => {
+            if(!d.erro) {
+                document.getElementById('logradouro').value = d.logradouro;
+                document.getElementById('bairro').value = d.bairro;
+            }
+        });
+    }
+}
