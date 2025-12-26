@@ -33,7 +33,7 @@ request.onupgradeneeded = (e) => {
 };
 
 async function sincronizarDadosDaNuvem() {
-    console.log("Iniciando sincronização forçada...");
+    console.log("Iniciando sincronização limpa...");
     try {
         const response = await fetch(URL_PLANILHA + "?t=" + new Date().getTime(), { 
             method: "GET", 
@@ -42,26 +42,32 @@ async function sincronizarDadosDaNuvem() {
         });
         
         const registrosNuvem = await response.json();
-        console.log("Registros recebidos da nuvem:", registrosNuvem.length);
-
         if (!registrosNuvem || registrosNuvem.length === 0) return;
 
         const tx = db.transaction("cadastros", "readwrite");
         const store = tx.objectStore("cadastros");
         
-        // Limpa o banco local antes de colocar os dados da nuvem para evitar conflitos
-        // store.clear(); // Opcional: use se quiser que o banco local seja idêntico à planilha
+        // 1. LIMPA O BANCO LOCAL PARA NÃO DUPLICAR
+        store.clear(); 
 
         registrosNuvem.forEach(reg => { 
-            // Garante que o ID seja sempre uma String para evitar erro de busca
             if (reg.id) {
+                // 2. PADRONIZA O ID PARA STRING
                 reg.id = String(reg.id);
+                
+                // 3. SEGREDO: Se o dado vier da planilha como 'nome', 
+                // criamos também o 'Nome' para o monitor não falhar
+                if (reg.nome && !reg.Nome) reg.Nome = reg.nome;
+                if (reg.cpf && !reg.CPF) reg.CPF = reg.cpf;
+                if (reg.bairro && !reg.Bairro) reg.Bairro = reg.bairro;
+                if (reg.data_nascimento && !reg.Data_Nascimento) reg.Data_Nascimento = reg.data_nascimento;
+
                 store.put(reg); 
             }
         });
         
         tx.oncomplete = () => {
-            console.log("Sincronia concluída! Banco atualizado.");
+            console.log("Sincronia concluída sem duplicados!");
             atualizarMonitor();
         };
     } catch (error) { 
