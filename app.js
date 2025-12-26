@@ -207,6 +207,7 @@ function atualizarMonitor() {
     };
 }
 
+
 function excluirU(c) {
     if(confirm("Excluir?")) db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(c).onsuccess = () => listarUsuarios();
 }
