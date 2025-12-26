@@ -33,46 +33,23 @@ request.onupgradeneeded = (e) => {
 };
 
 async function sincronizarDadosDaNuvem() {
-    console.log("Iniciando sincronização limpa...");
     try {
-        const response = await fetch(URL_PLANILHA + "?t=" + new Date().getTime(), { 
-            method: "GET", 
-            redirect: "follow",
-            cache: "no-store" 
-        });
-        
+        const response = await fetch(URL_PLANILHA + "?t=" + new Date().getTime(), { method: "GET", redirect: "follow", cache: "no-store" });
         const registrosNuvem = await response.json();
-        if (!registrosNuvem || registrosNuvem.length === 0) return;
+        if (!registrosNuvem) return;
 
         const tx = db.transaction("cadastros", "readwrite");
         const store = tx.objectStore("cadastros");
-        
-        // 1. LIMPA O BANCO LOCAL PARA NÃO DUPLICAR
-        store.clear(); 
+        store.clear(); // Limpa para não duplicar
 
         registrosNuvem.forEach(reg => { 
-            if (reg.id) {
-                // 2. PADRONIZA O ID PARA STRING
-                reg.id = String(reg.id);
-                
-                // 3. SEGREDO: Se o dado vier da planilha como 'nome', 
-                // criamos também o 'Nome' para o monitor não falhar
-                if (reg.nome && !reg.Nome) reg.Nome = reg.nome;
-                if (reg.cpf && !reg.CPF) reg.CPF = reg.cpf;
-                if (reg.bairro && !reg.Bairro) reg.Bairro = reg.bairro;
-                if (reg.data_nascimento && !reg.Data_Nascimento) reg.Data_Nascimento = reg.data_nascimento;
-
+            if (reg.Cadastrador_ID) {
+                reg.id = String(reg.Cadastrador_ID);
                 store.put(reg); 
             }
         });
-        
-        tx.oncomplete = () => {
-            console.log("Sincronia concluída sem duplicados!");
-            atualizarMonitor();
-        };
-    } catch (error) { 
-        console.error("Erro na busca da nuvem:", error); 
-    }
+        tx.oncomplete = () => atualizarMonitor();
+    } catch (e) { console.error("Erro na nuvem:", e); }
 }
 
 function autenticar() {
@@ -115,46 +92,35 @@ async function salvar() {
     const cpf = document.getElementById('cpf').value;
     const userAtual = document.getElementById('label-nome-user').innerText;
 
-    if (!nome || !cpf) return alert("Campos obrigatórios: Nome e CPF!");
+    if (!nome || !cpf) return alert("Nome e CPF são obrigatórios!");
 
     const registro = {
-        id: editId || "CAD-" + new Date().getTime(),
-        Tipo: document.getElementById('tipo').value, 
-        Nome: nome,
-        Sobrenome: document.getElementById('sobrenome')?.value || "",
-        CPF: cpf,
-        WhatsApp: document.getElementById('whatsapp').value,
-        Bairro: document.getElementById('bairro').value,
-        Origem: document.getElementById('origem').value,
-        // Adicione aqui outros campos seguindo o mesmo padrão se necessário
-        Atualizado_Por: userAtual,
-        Atualizado_Em: new Date().toLocaleString()
+        "Cadastrador_ID": editId || "CAD-" + new Date().getTime(),
+        "Status": "Ativo", 
+        "Perfil": document.getElementById('tipo').value, // Associado ou Adepto
+        "Nome": nome,
+        "Sobrenome": document.getElementById('sobrenome').value,
+        "CPF": cpf,
+        "WhatsApp": document.getElementById('whatsapp').value,
+        "Bairro": document.getElementById('bairro').value,
+        "Canal_Preferencial": document.getElementById('origem').value,
+        "Data_Nascimento": document.getElementById('data_nascimento').value,
+        "Atualizado_Por": userAtual,
+        "Atualizado_Em": new Date().toLocaleString()
     };
 
-    if (!editId) {
-        registro.Criado_Por = userAtual;
-        registro.Criado_Em = new Date().toLocaleString();
-    }
-
     try {
-        // Envia para a Planilha Google
-        fetch(URL_PLANILHA, { 
-            method: 'POST', 
-            mode: 'no-cors', 
-            body: JSON.stringify(registro) 
-        });
+        fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
 
-        // Grava no Banco Local (IndexedDB)
         const tx = db.transaction("cadastros", "readwrite");
-        tx.objectStore("cadastros").put(registro);
+        const registroLocal = {...registro, id: String(registro.Cadastrador_ID)};
+        tx.objectStore("cadastros").put(registroLocal);
         
         tx.oncomplete = () => {
-            alert(editId ? "Cadastro Atualizado!" : "Novo Cadastro Salvo!");
+            alert(editId ? "Cadastro atualizado!" : "Cadastrado com sucesso!");
             location.reload(); 
         };
-    } catch (e) { 
-        alert("Erro ao salvar."); 
-    }
+    } catch (e) { alert("Erro ao salvar."); }
 }
 
 function criarUsuario() {
@@ -241,7 +207,7 @@ function excluirU(c) {
 }
 
 function prepararEdicao(idOriginal) {
-    console.log("Iniciando varredura para ID:", idOriginal);
+    console.log("Editando ID:", idOriginal);
     if (!db) return;
 
     const tx = db.transaction("cadastros", "readonly");
@@ -249,36 +215,38 @@ function prepararEdicao(idOriginal) {
     const request = store.get(String(idOriginal));
 
     request.onsuccess = (e) => {
-        const r = e.target.result;
-        if (!r) {
-            if (typeof idOriginal === "string") return prepararEdicao(Number(idOriginal));
-            return;
+        let r = e.target.result;
+        if (!r && typeof idOriginal === "string") return prepararEdicao(Number(idOriginal));
+        if (!r) return;
+
+        // Mapeamento exato da sua planilha
+        const mapa = {
+            'nome': r.Nome,
+            'sobrenome': r.Sobrenome,
+            'cpf': r.CPF,
+            'whatsapp': r.WhatsApp,
+            'bairro': r.Bairro,
+            'data_nascimento': r.Data_Nascimento,
+            'tipo': r.Perfil,            // Associado ou Adepto
+            'origem': r.Canal_Preferencial
+        };
+
+        // Preenche e DESBLOQUEIA os campos (liberando o validador)
+        for (let idHtml in mapa) {
+            const el = document.getElementById(idHtml);
+            if (el) {
+                el.value = mapa[idHtml] || "";
+                el.disabled = false; // Libera para editar
+                el.readOnly = false;
+            }
         }
 
-        console.log("Dados recebidos do banco:", r);
+        // Libera o botão salvar manualmente
+        const btnSalvar = document.getElementById('btn-salvar');
+        if (btnSalvar) btnSalvar.disabled = false;
 
-        // PEGA TODOS OS INPUTS E SELECTS DA PÁGINA
-        const todosOsCampos = document.querySelectorAll('input, select, textarea');
-        
-        todosOsCampos.forEach(campo => {
-            const idHtml = campo.id.toLowerCase(); // id do html em minúsculo
-            
-            // Procura no registro 'r' alguma chave que combine com o ID do HTML
-            for (let chaveBanco in r) {
-                if (chaveBanco.toLowerCase() === idHtml) {
-                    campo.value = r[chaveBanco] || "";
-                    console.log(`Sucesso: Preenchi o campo HTML '${campo.id}' com o dado '${chaveBanco}':`, r[chaveBanco]);
-                }
-            }
-        });
-
-        // Configurações de controle de edição
-        const editIdInput = document.getElementById('edit-id');
-        if (editIdInput) editIdInput.value = r.id || idOriginal;
-
-        const titulo = document.getElementById('titulo-form');
-        if (titulo) titulo.innerText = "Atualizar Cadastro";
-        
+        document.getElementById('edit-id').value = r.Cadastrador_ID || r.id || idOriginal;
+        document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
         document.getElementById('botoes-acao')?.classList.add('hidden');
         document.getElementById('botoes-edicao')?.classList.remove('hidden');
 
