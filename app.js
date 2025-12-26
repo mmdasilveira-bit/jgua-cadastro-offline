@@ -241,7 +241,7 @@ function excluirU(c) {
 }
 
 function prepararEdicao(idOriginal) {
-    console.log("Buscando dados para ID:", idOriginal);
+    console.log("Iniciando varredura para ID:", idOriginal);
     if (!db) return;
 
     const tx = db.transaction("cadastros", "readonly");
@@ -255,42 +255,33 @@ function prepararEdicao(idOriginal) {
             return;
         }
 
-        console.log("Registro encontrado:", r);
+        console.log("Dados recebidos do banco:", r);
 
-        // MAPEAMENTO EXATO (ID do HTML -> Coluna da Planilha)
-        const mapa = {
-            'nome': r.Nome || r.nome,
-            'sobrenome': r.Sobrenome || r.sobrenome,
-            'cpf': r.CPF || r.cpf,
-            'whatsapp': r.WhatsApp || r.whatsapp,
-            'bairro': r.Bairro || r.bairro,
-            'data_nascimento': r.Data_Nascimento || r.data_nascimento,
-            'tipo': r.Status || r.tipo, // Ajustado para a coluna 'Status' ou 'tipo'
-            'origem': r.Canal_Preferencial || r.origem
-        };
-
-        // Preenche os campos no topo da página
-        for (let idHtml in mapa) {
-            const el = document.getElementById(idHtml);
-            if (el) {
-                el.value = mapa[idHtml] || "";
+        // PEGA TODOS OS INPUTS E SELECTS DA PÁGINA
+        const todosOsCampos = document.querySelectorAll('input, select, textarea');
+        
+        todosOsCampos.forEach(campo => {
+            const idHtml = campo.id.toLowerCase(); // id do html em minúsculo
+            
+            // Procura no registro 'r' alguma chave que combine com o ID do HTML
+            for (let chaveBanco in r) {
+                if (chaveBanco.toLowerCase() === idHtml) {
+                    campo.value = r[chaveBanco] || "";
+                    console.log(`Sucesso: Preenchi o campo HTML '${campo.id}' com o dado '${chaveBanco}':`, r[chaveBanco]);
+                }
             }
-        }
+        });
 
-        // Garante que o ID de controle seja salvo para a atualização
-        if (document.getElementById('edit-id')) {
-            document.getElementById('edit-id').value = r.id || idOriginal;
-        }
+        // Configurações de controle de edição
+        const editIdInput = document.getElementById('edit-id');
+        if (editIdInput) editIdInput.value = r.id || idOriginal;
 
-        // Muda visualmente para modo de edição
-        if (document.getElementById('titulo-form')) {
-            document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
-        }
+        const titulo = document.getElementById('titulo-form');
+        if (titulo) titulo.innerText = "Atualizar Cadastro";
         
         document.getElementById('botoes-acao')?.classList.add('hidden');
         document.getElementById('botoes-edicao')?.classList.remove('hidden');
 
-        // Sobe a tela suavemente para o formulário
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 }
