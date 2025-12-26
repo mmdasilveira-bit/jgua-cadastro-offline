@@ -163,16 +163,38 @@ function atualizarMonitor() {
         const registros = e.target.result;
         document.getElementById('contador-total').innerText = registros.length;
         
-        // CÁLCULO DA MÉDIA DE IDADE (Requisito Mantido)
-        const idades = registros.map(r => parseInt(r.idade)).filter(i => !isNaN(i) && i > 0);
-        const media = idades.length ? Math.round(idades.reduce((a, b) => a + b) / idades.length) : 0;
-        document.getElementById('media-idade').innerText = "Média Idade: " + media;
+        let somaIdades = 0;
+        let contagemComData = 0;
+        const hoje = new Date();
+
+        registros.forEach(r => {
+            // Usando o nome exato da sua coluna: Data_Nascimento
+            if (r.Data_Nascimento) {
+                const nasc = new Date(r.Data_Nascimento);
+                if (!isNaN(nasc)) {
+                    let idade = hoje.getFullYear() - nasc.getFullYear();
+                    const m = hoje.getMonth() - nasc.getMonth();
+                    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
+                        idade--;
+                    }
+                    if (idade >= 0) {
+                        somaIdades += idade;
+                        contagemComData++;
+                    }
+                }
+            }
+        });
+
+        const media = contagemComData > 0 ? Math.round(somaIdades / contagemComData) : 0;
+        const labelMedia = document.getElementById('media-idade');
+        if(labelMedia) labelMedia.innerText = "Média Idade: " + media;
 
         let html = "";
+        // r.Nome, r.Bairro e r.CPF ajustados para as maiúsculas das suas colunas
         registros.reverse().slice(0, 20).forEach(r => {
             html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
-                <strong>${r.nome}</strong> - ${r.bairro || '---'}<br>
-                <small>CPF: ${r.cpf} | Idade: ${r.idade || '---'}</small></div>`;
+                <strong>${r.Nome || r.nome}</strong> - ${r.Bairro || r.bairro || '---'}<br>
+                <small>CPF: ${r.CPF || r.cpf} | Nasc: ${r.Data_Nascimento || '---'}</small></div>`;
         });
         document.getElementById('lista-cadastros').innerHTML = html || "Vazio.";
     };
