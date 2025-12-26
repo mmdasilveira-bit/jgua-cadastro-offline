@@ -1,9 +1,10 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
 let db;
-const request = indexedDB.open("JGUA_FINAL_DB", 20); // Mantendo a versão 20 que funcionou no Firefox
+// Usamos a versão 20 que você confirmou estar estável no Firefox
+const request = indexedDB.open("JGUA_FINAL_DB", 20); 
 
-// Localiza o botão de login para controle de estado
+// Trava o botão inicialmente para evitar o erro de "undefined" no Chrome
 const btnAcessar = document.querySelector('button[onclick="autenticar()"]');
 if (btnAcessar) {
     btnAcessar.disabled = true;
@@ -12,14 +13,13 @@ if (btnAcessar) {
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
-    console.log("Banco JGUA_FINAL_DB pronto.");
+    console.log("Banco pronto no Chrome.");
     
-    // Libera o botão apenas quando o banco está disponível
+    // Libera o botão apenas quando a variável 'db' está preenchida
     if (btnAcessar) {
         btnAcessar.disabled = false;
         btnAcessar.innerText = "Acessar Sistema";
     }
-    
     sincronizarDadosDaNuvem();
 };
 
