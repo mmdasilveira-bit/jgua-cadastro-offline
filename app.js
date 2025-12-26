@@ -240,67 +240,66 @@ function excluirU(c) {
     }
 }
 
-function prepararEdicao(id) {
-    console.log("Iniciando edição do ID:", id);
+function prepararEdicao(idOriginal) {
+    console.log("Buscando pelo Cadastrador_ID:", idOriginal);
     
-    // Garantia: Se o banco fechou, tentamos usar a variável global ou avisar
-    if (!db) {
-        console.error("Banco de dados não disponível.");
-        alert("Erro técnico: O banco de dados não está pronto. Recarregue a página.");
-        return;
-    }
+    if (!db) return alert("Banco de dados não carregado.");
 
-    try {
-        const tx = db.transaction("cadastros", "readonly");
-        const store = tx.objectStore("cadastros");
-        const request = store.get(String(id));
+    const tx = db.transaction("cadastros", "readonly");
+    const store = tx.objectStore("cadastros");
 
-        request.onsuccess = (e) => {
-            const r = e.target.result;
-            if (!r) {
-                console.warn("Registro não encontrado para o ID:", id);
-                return;
+    // Como o ID vem da lista, vamos garantir que ele seja tratado como o tipo correto
+    // Tentamos buscar o registro. No seu banco, a keyPath é "id", 
+    // mas o valor dentro dela é o que veio do Cadastrador_ID.
+    
+    const request = store.get(String(idOriginal));
+
+    request.onsuccess = (e) => {
+        const r = e.target.result;
+        
+        if (!r) {
+            console.error("Registro não encontrado para o ID:", idOriginal);
+            // Se falhar como String, tenta como Number por segurança
+            if (typeof idOriginal === "string") {
+                prepararEdicao(Number(idOriginal));
             }
+            return;
+        }
 
-            console.log("Dados encontrados:", r);
+        console.log("Sucesso! Paulo encontrado:", r);
 
-            // Mapeamento IDs do HTML -> Colunas do Banco
-            const campos = {
-                'nome': r.Nome || r.nome,
-                'sobrenome': r.Sobrenome || r.sobrenome,
-                'cpf': r.CPF || r.cpf,
-                'whatsapp': r.WhatsApp || r.whatsapp,
-                'bairro': r.Bairro || r.bairro,
-                'tipo': r.Tipo || r.tipo,
-                'origem': r.Origem || r.origem,
-                'data_nascimento': r.Data_Nascimento || r.data_nascimento
-            };
-
-            for (let idHtml in campos) {
-                const el = document.getElementById(idHtml);
-                if (el) {
-                    el.value = campos[idHtml] || "";
-                    console.log(`Campo ${idHtml} preenchido com:`, campos[idHtml]);
-                }
-            }
-
-            // Ativa o modo de edição visual
-            if (document.getElementById('edit-id')) document.getElementById('edit-id').value = r.id;
-            if (document.getElementById('titulo-form')) document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
-            
-            document.getElementById('botoes-acao')?.classList.add('hidden');
-            document.getElementById('botoes-edicao')?.classList.remove('hidden');
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Preenchimento dos campos usando os nomes exatos das suas colunas
+        // Se no seu HTML o id for 'nome' (minúsculo), ele busca r.Nome (maiúsculo)
+        const mapa = {
+            'nome': r.Nome || r.nome,
+            'sobrenome': r.Sobrenome || r.sobrenome,
+            'cpf': r.CPF || r.cpf,
+            'whatsapp': r.WhatsApp || r.whatsapp,
+            'bairro': r.Bairro || r.bairro,
+            'tipo': r.Tipo || r.tipo,
+            'origem': r.Origem || r.origem,
+            'data_nascimento': r.Data_Nascimento || r.data_nascimento
         };
 
-        request.onerror = (err) => {
-            console.error("Erro na busca do registro:", err);
-        };
+        for (let idHtml in mapa) {
+            const campo = document.getElementById(idHtml);
+            if (campo) campo.value = mapa[idHtml] || "";
+        }
 
-    } catch (err) {
-        console.error("Falha ao iniciar transação:", err);
-    }
+        // Guarda o ID para a função salvar saber que é uma atualização
+        if (document.getElementById('edit-id')) {
+            document.getElementById('edit-id').value = r.id || r.Cadastrador_ID;
+        }
+
+        if (document.getElementById('titulo-form')) {
+            document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
+        }
+        
+        document.getElementById('botoes-acao')?.classList.add('hidden');
+        document.getElementById('botoes-edicao')?.classList.remove('hidden');
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 }
 
 function cancelarEdicao() { 
