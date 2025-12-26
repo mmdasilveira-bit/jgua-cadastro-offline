@@ -34,12 +34,14 @@ async function sincronizarDadosDaNuvem() {
     } catch (error) { console.error("Erro na nuvem."); }
 }
 
+
 function autenticar() {
     const cod = document.getElementById('input-codigo').value;
     
-    // Proteção: Se o banco ainda não conectou, tentamos usar a variável global ou alertamos
+    // CORREÇÃO PARA O CHROME: Verifica se o banco já abriu
     if (!db) {
-        alert("O sistema ainda está carregando o banco de dados local. Aguarde 2 segundos e tente novamente.");
+        console.log("Aguardando banco de dados...");
+        alert("O sistema ainda está carregando os dados. Aguarde 3 segundos e tente novamente.");
         return;
     }
 
@@ -56,12 +58,12 @@ function autenticar() {
                 document.getElementById('secao-login').classList.add('hidden');
                 document.getElementById('conteudo').classList.remove('hidden');
                 
-                // Regras de Perfil (Mantendo seus Requisitos)
+                // Requisitos de visibilidade mantidos
                 if(u.perfil === "CADASTRADOR") {
-                    if(document.getElementById('monitor')) document.getElementById('monitor').classList.add('hidden');
+                    document.getElementById('monitor').classList.add('hidden');
                 }
                 if(u.perfil === "GESTOR") {
-                    if(document.getElementById('secao-admin-users')) document.getElementById('secao-admin-users').classList.remove('hidden');
+                    document.getElementById('secao-admin-users')?.classList.remove('hidden');
                 }
                 
                 atualizarMonitor();
@@ -70,16 +72,13 @@ function autenticar() {
                 alert("Código inválido!"); 
             }
         };
-
-        consulta.onerror = () => {
-            console.error("Erro na consulta de usuário");
-        };
-
-    } catch (err) {
-        console.error("Erro ao abrir transação:", err);
-        alert("Erro de conexão com o banco. Por favor, recarregue a página (F5).");
+    } catch (e) {
+        console.error("Erro ao acessar banco:", e);
+        alert("Erro técnico: O banco de dados não respondeu. Recarregue a página (F5).");
     }
 }
+
+
 async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const nome = document.getElementById('nome').value.trim();
