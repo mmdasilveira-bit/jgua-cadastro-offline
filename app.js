@@ -227,38 +227,65 @@ function excluirU(c) {
 
 function prepararEdicao(id) {
     console.log("Iniciando edição do ID:", id);
-    const tx = db.transaction("cadastros", "readonly");
-    const store = tx.objectStore("cadastros");
     
-    store.get(id).onsuccess = (e) => {
-        const r = e.target.result;
-        if (!r) return;
+    // Garantia: Se o banco fechou, tentamos usar a variável global ou avisar
+    if (!db) {
+        console.error("Banco de dados não disponível.");
+        alert("Erro técnico: O banco de dados não está pronto. Recarregue a página.");
+        return;
+    }
 
-        // IDs do HTML -> Dados do Banco (Maiúsculo ou Minúsculo)
-        const campos = {
-            'nome': r.Nome || r.nome,
-            'sobrenome': r.Sobrenome || r.sobrenome,
-            'cpf': r.CPF || r.cpf,
-            'whatsapp': r.WhatsApp || r.whatsapp,
-            'bairro': r.Bairro || r.bairro,
-            'tipo': r.Tipo || r.tipo,
-            'origem': r.Origem || r.origem,
-            'data_nascimento': r.Data_Nascimento || r.data_nascimento
+    try {
+        const tx = db.transaction("cadastros", "readonly");
+        const store = tx.objectStore("cadastros");
+        const request = store.get(id);
+
+        request.onsuccess = (e) => {
+            const r = e.target.result;
+            if (!r) {
+                console.warn("Registro não encontrado para o ID:", id);
+                return;
+            }
+
+            console.log("Dados encontrados:", r);
+
+            // Mapeamento IDs do HTML -> Colunas do Banco
+            const campos = {
+                'nome': r.Nome || r.nome,
+                'sobrenome': r.Sobrenome || r.sobrenome,
+                'cpf': r.CPF || r.cpf,
+                'whatsapp': r.WhatsApp || r.whatsapp,
+                'bairro': r.Bairro || r.bairro,
+                'tipo': r.Tipo || r.tipo,
+                'origem': r.Origem || r.origem,
+                'data_nascimento': r.Data_Nascimento || r.data_nascimento
+            };
+
+            for (let idHtml in campos) {
+                const el = document.getElementById(idHtml);
+                if (el) {
+                    el.value = campos[idHtml] || "";
+                    console.log(`Campo ${idHtml} preenchido com:`, campos[idHtml]);
+                }
+            }
+
+            // Ativa o modo de edição visual
+            if (document.getElementById('edit-id')) document.getElementById('edit-id').value = r.id;
+            if (document.getElementById('titulo-form')) document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
+            
+            document.getElementById('botoes-acao')?.classList.add('hidden');
+            document.getElementById('botoes-edicao')?.classList.remove('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
-        for (let idHtml in campos) {
-            const el = document.getElementById(idHtml);
-            if (el) el.value = campos[idHtml] || "";
-        }
+        request.onerror = (err) => {
+            console.error("Erro na busca do registro:", err);
+        };
 
-        if (document.getElementById('edit-id')) document.getElementById('edit-id').value = r.id;
-        if (document.getElementById('titulo-form')) document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
-        
-        document.getElementById('botoes-acao')?.classList.add('hidden');
-        document.getElementById('botoes-edicao')?.classList.remove('hidden');
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+    } catch (err) {
+        console.error("Falha ao iniciar transação:", err);
+    }
 }
 
 function cancelarEdicao() { 
