@@ -168,16 +168,18 @@ function atualizarMonitor() {
         const hoje = new Date();
 
         registros.forEach(r => {
-            // Usando o nome exato da sua coluna: Data_Nascimento
-            if (r.Data_Nascimento) {
-                const nasc = new Date(r.Data_Nascimento);
-                if (!isNaN(nasc)) {
+            // Tenta pegar a data tanto com D maiúsculo quanto minúsculo
+            const dataNascRaw = r.Data_Nascimento || r.data_nascimento || r.nascimento;
+            
+            if (dataNascRaw) {
+                const nasc = new Date(dataNascRaw);
+                if (!isNaN(nasc.getTime())) {
                     let idade = hoje.getFullYear() - nasc.getFullYear();
                     const m = hoje.getMonth() - nasc.getMonth();
                     if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
                         idade--;
                     }
-                    if (idade >= 0) {
+                    if (idade >= 0 && idade < 120) { // Validação simples de idade real
                         somaIdades += idade;
                         contagemComData++;
                     }
@@ -190,11 +192,16 @@ function atualizarMonitor() {
         if(labelMedia) labelMedia.innerText = "Média Idade: " + media;
 
         let html = "";
-        // r.Nome, r.Bairro e r.CPF ajustados para as maiúsculas das suas colunas
         registros.reverse().slice(0, 20).forEach(r => {
+            // Tenta Nome ou nome / Bairro ou bairro / CPF ou cpf
+            const vNome = r.Nome || r.nome || "Sem Nome";
+            const vBairro = r.Bairro || r.bairro || "---";
+            const vCPF = r.CPF || r.cpf || "---";
+            const vNasc = r.Data_Nascimento || r.data_nascimento || "---";
+
             html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
-                <strong>${r.Nome || r.nome}</strong> - ${r.Bairro || r.bairro || '---'}<br>
-                <small>CPF: ${r.CPF || r.cpf} | Nasc: ${r.Data_Nascimento || '---'}</small></div>`;
+                <strong>${vNome}</strong> - ${vBairro}<br>
+                <small>CPF: ${vCPF} | Nasc: ${vNasc}</small></div>`;
         });
         document.getElementById('lista-cadastros').innerHTML = html || "Vazio.";
     };
