@@ -190,7 +190,7 @@ async function buscarCEP() {
         }
     });
 }
-// --- FUNÇÕES DE GESTÃO DE INTEGRANTES (COLE NO FINAL DO APP.JS) ---
+// --- FUNÇÕES DE GESTÃO DE INTEGRANTES ---
 
 function criarUsuario() {
     const nome = document.getElementById('novo-nome').value.trim();
@@ -208,7 +208,7 @@ function criarUsuario() {
         alert("Integrante cadastrado com sucesso!");
         document.getElementById('novo-nome').value = "";
         document.getElementById('novo-codigo').value = "";
-        listarUsuarios(); // Atualiza a listinha embaixo
+        listarUsuarios();
     };
     
     request.onerror = () => alert("Este código já está em uso!");
