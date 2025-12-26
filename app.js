@@ -224,30 +224,55 @@ function excluirU(c) {
 }
 
 function prepararEdicao(id) {
-    db.transaction("cadastros", "readonly").objectStore("cadastros").get(id).onsuccess = (e) => {
+    console.log("Tentando editar o ID:", id); // Log para debug no F12
+    
+    const transaction = db.transaction("cadastros", "readonly");
+    const store = transaction.objectStore("cadastros");
+    
+    store.get(id).onsuccess = (e) => {
         const r = e.target.result;
-        if (!r) return;
+        if (!r) {
+            alert("Erro: Registro não encontrado no banco local.");
+            return;
+        }
 
-        // Lista de campos do seu formulário (IDs do HTML)
-        const campos = ["nome", "sobrenome", "cpf", "whatsapp", "bairro", "tipo", "origem", "data_nascimento"];
-        
-        campos.forEach(c => {
-            const elemento = document.getElementById(c);
-            if (elemento) {
-                // Tenta pegar o valor com a primeira letra maiúscula (ex: Nome) 
-                // ou minúscula (ex: nome)
-                const valor = r[c.charAt(0).toUpperCase() + c.slice(1)] || r[c];
-                elemento.value = valor || "";
+        // Mapeamento: ID do HTML -> Nome da Coluna no Banco (Maiúsculo ou Minúsculo)
+        const mapaCampos = {
+            'nome': r.Nome || r.nome,
+            'sobrenome': r.Sobrenome || r.sobrenome,
+            'cpf': r.CPF || r.cpf,
+            'whatsapp': r.WhatsApp || r.whatsapp,
+            'bairro': r.Bairro || r.bairro,
+            'tipo': r.Tipo || r.tipo,
+            'origem': r.Origem || r.origem,
+            'data_nascimento': r.Data_Nascimento || r.data_nascimento
+        };
+
+        // Preenche cada campo se o elemento existir no HTML
+        for (let idHtml in mapaCampos) {
+            const campo = document.getElementById(idHtml);
+            if (campo) {
+                campo.value = mapaCampos[idHtml] || "";
             }
-        });
+        }
 
-        document.getElementById('edit-id').value = r.id;
-        document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
-        document.getElementById('botoes-acao').classList.add('hidden');
-        document.getElementById('botoes-edicao').classList.remove('hidden');
+        // Preenche o ID oculto para saber que é uma edição
+        const inputId = document.getElementById('edit-id');
+        if (inputId) inputId.value = r.id;
+
+        // Muda o título e alterna os botões
+        const titulo = document.getElementById('titulo-form');
+        if (titulo) titulo.innerText = "Atualizar Cadastro";
+
+        const btnAcao = document.getElementById('botoes-acao');
+        const btnEdicao = document.getElementById('botoes-edicao');
         
-        // Rola a página para o topo para facilitar a edição
+        if (btnAcao) btnAcao.classList.add('hidden');
+        if (btnEdicao) btnEdicao.classList.remove('hidden');
+
+        // Sobe a tela para o formulário
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        console.log("Campos preenchidos para:", r.Nome || r.nome);
     };
 }
 function cancelarEdicao() { 
