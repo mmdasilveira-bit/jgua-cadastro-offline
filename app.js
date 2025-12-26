@@ -1,38 +1,36 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
 let db;
-// Mantemos a versão 20 para garantir que ele limpe os erros anteriores
-const request = indexedDB.open("JGUA_FINAL_DB", 20);
+const request = indexedDB.open("JGUA_FINAL_DB", 20); // Mantendo a versão 20 que funcionou no Firefox
 
-request.onupgradeneeded = (e) => {
-    db = e.target.result;
-    if (!db.objectStoreNames.contains("cadastros")) {
-        db.createObjectStore("cadastros", { keyPath: "id" });
-    }
-    if (!db.objectStoreNames.contains("usuarios")) {
-        db.createObjectStore("usuarios", { keyPath: "codigo" });
-    }
-    const store = e.currentTarget.transaction.objectStore("usuarios");
-    store.put({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
-};
+// Localiza o botão de login para controle de estado
+const btnAcessar = document.querySelector('button[onclick="autenticar()"]');
+if (btnAcessar) {
+    btnAcessar.disabled = true;
+    btnAcessar.innerText = "Carregando Banco...";
+}
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
+    console.log("Banco JGUA_FINAL_DB pronto.");
+    
+    // Libera o botão apenas quando o banco está disponível
+    if (btnAcessar) {
+        btnAcessar.disabled = false;
+        btnAcessar.innerText = "Acessar Sistema";
+    }
+    
     sincronizarDadosDaNuvem();
 };
 
-async function sincronizarDadosDaNuvem() {
-    try {
-        const response = await fetch(URL_PLANILHA, { method: "GET", redirect: "follow" });
-        const registrosNuvem = await response.json();
-        const tx = db.transaction("cadastros", "readwrite");
-        const store = tx.objectStore("cadastros");
-        registrosNuvem.forEach(reg => { if (reg.id) store.put(reg); });
-        tx.oncomplete = () => {
-            if(document.getElementById('contador-total')) atualizarMonitor();
-        };
-    } catch (error) { console.error("Erro na nuvem."); }
-}
+request.onupgradeneeded = (e) => {
+    db = e.target.result;
+    if (!db.objectStoreNames.contains("cadastros")) db.createObjectStore("cadastros", { keyPath: "id" });
+    if (!db.objectStoreNames.contains("usuarios")) {
+        const userStore = db.createObjectStore("usuarios", { keyPath: "codigo" });
+        userStore.add({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
+    }
+};
 
 
 function autenticar() {
