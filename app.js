@@ -33,8 +33,8 @@ request.onupgradeneeded = (e) => {
 };
 
 async function sincronizarDadosDaNuvem() {
+    console.log("Iniciando sincronização forçada...");
     try {
-        // O "?t=" força o navegador a buscar dados novos na planilha
         const response = await fetch(URL_PLANILHA + "?t=" + new Date().getTime(), { 
             method: "GET", 
             redirect: "follow",
@@ -42,17 +42,26 @@ async function sincronizarDadosDaNuvem() {
         });
         
         const registrosNuvem = await response.json();
+        console.log("Registros recebidos da nuvem:", registrosNuvem.length);
+
         if (!registrosNuvem || registrosNuvem.length === 0) return;
 
         const tx = db.transaction("cadastros", "readwrite");
         const store = tx.objectStore("cadastros");
         
+        // Limpa o banco local antes de colocar os dados da nuvem para evitar conflitos
+        // store.clear(); // Opcional: use se quiser que o banco local seja idêntico à planilha
+
         registrosNuvem.forEach(reg => { 
-            if (reg.id) store.put(reg); 
+            // Garante que o ID seja sempre uma String para evitar erro de busca
+            if (reg.id) {
+                reg.id = String(reg.id);
+                store.put(reg); 
+            }
         });
         
         tx.oncomplete = () => {
-            console.log("Sincronia concluída com sucesso!");
+            console.log("Sincronia concluída! Banco atualizado.");
             atualizarMonitor();
         };
     } catch (error) { 
