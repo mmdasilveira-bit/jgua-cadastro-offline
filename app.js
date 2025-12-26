@@ -57,10 +57,12 @@ function autenticar() {
             if(u.perfil === "GESTOR" && document.getElementById('secao-admin-users')) {
                 document.getElementById('secao-admin-users').classList.remove('hidden');
             }
+            // ADICIONAMOS ESTAS DUAS LINHAS ABAIXO:
             atualizarMonitor();
+            listarUsuarios(); 
         } else { alert("Código inválido!"); }
     };
-}
+} // <-- ESTA CHAVE FECHA A FUNÇÃO CORRETAMENTE
 
 // --- SALVAR / EDITAR (33 COLUNAS) ---
 async function salvar() {
