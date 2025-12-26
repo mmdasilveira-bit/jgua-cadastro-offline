@@ -53,9 +53,15 @@ function autenticar() {
             document.getElementById('conteudo').classList.remove('hidden');
             
             if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
+            if(u.perfil === "GESTOR" && document.getElementById('secao-admin-users')) {
+                document.getElementById('secao-admin-users').classList.remove('hidden');
+            }
+            
+            // --- ADICIONE ESTA LINHA ABAIXO ---
+            listarUsuarios(); 
+            // ---------------------------------
             
             atualizarMonitor();
-            listarUsuarios();
         } else { alert("Código inválido!"); }
     };
 }
