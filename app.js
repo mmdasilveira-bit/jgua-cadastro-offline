@@ -42,12 +42,14 @@ async function sincronizarDadosDaNuvem() {
         const store = tx.objectStore("cadastros");
         store.clear(); // Limpa para não duplicar
 
-        registrosNuvem.forEach(reg => { 
-            if (reg.Cadastrador_ID) {
-                reg.id = String(reg.Cadastrador_ID);
-                store.put(reg); 
-            }
-        });
+       registrosNuvem.forEach(reg => { 
+    // Usamos o Cadastrador_ID que você me mostrou na foto
+    const idReal = reg.Cadastrador_ID || reg.id; 
+    if (idReal) {
+        reg.id = String(idReal); // O IndexedDB precisa do campo 'id'
+        store.put(reg); 
+    }
+});
         tx.oncomplete = () => atualizarMonitor();
     } catch (e) { console.error("Erro na nuvem:", e); }
 }
