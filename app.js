@@ -225,7 +225,7 @@ function atualizarMonitor() {
             const vCPF = r.CPF || r.cpf || "---";
             const vNasc = r.Data_Nascimento || r.data_nascimento || "---";
 
-            html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
+            html += `<div class="item-lista" onclick="('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
                 <strong>${vNome}</strong> - ${vBairro}<br>
                 <small>CPF: ${vCPF} | Nasc: ${vNasc}</small></div>`;
         });
@@ -241,59 +241,52 @@ function excluirU(c) {
 }
 
 function prepararEdicao(idOriginal) {
-    console.log("Buscando pelo Cadastrador_ID:", idOriginal);
-    
-    if (!db) return alert("Banco de dados não carregado.");
+    console.log("Buscando dados para ID:", idOriginal);
+    if (!db) return;
 
     const tx = db.transaction("cadastros", "readonly");
     const store = tx.objectStore("cadastros");
-
-    // Como o ID vem da lista, vamos garantir que ele seja tratado como o tipo correto
-    // Tentamos buscar o registro. No seu banco, a keyPath é "id", 
-    // mas o valor dentro dela é o que veio do Cadastrador_ID.
-    
     const request = store.get(String(idOriginal));
 
     request.onsuccess = (e) => {
         const r = e.target.result;
-        
         if (!r) {
-            console.error("Registro não encontrado para o ID:", idOriginal);
-            // Se falhar como String, tenta como Number por segurança
-            if (typeof idOriginal === "string") {
-                prepararEdicao(Number(idOriginal));
-            }
+            // Se não achou como String, tenta como Number antes de desistir
+            if (typeof idOriginal === "string") return prepararEdicao(Number(idOriginal));
             return;
         }
 
-        console.log("Sucesso! Paulo encontrado:", r);
-
-        // Preenchimento dos campos usando os nomes exatos das suas colunas
-        // Se no seu HTML o id for 'nome' (minúsculo), ele busca r.Nome (maiúsculo)
-        const mapa = {
-            'nome': r.Nome || r.nome,
-            'sobrenome': r.Sobrenome || r.sobrenome,
-            'cpf': r.CPF || r.cpf,
-            'whatsapp': r.WhatsApp || r.whatsapp,
-            'bairro': r.Bairro || r.bairro,
-            'tipo': r.Tipo || r.tipo,
-            'origem': r.Origem || r.origem,
-            'data_nascimento': r.Data_Nascimento || r.data_nascimento
+        // FUNÇÃO CURINGA: Busca o valor ignorando se é Maiúsculo ou Minúsculo
+        const buscarValor = (campoAlvo) => {
+            const chaves = Object.keys(r);
+            const chaveEncontrada = chaves.find(k => k.toLowerCase() === campoAlvo.toLowerCase());
+            return chaveEncontrada ? r[chaveEncontrada] : "";
         };
 
-        for (let idHtml in mapa) {
-            const campo = document.getElementById(idHtml);
-            if (campo) campo.value = mapa[idHtml] || "";
+        // IDs do seu HTML -> O que ele deve buscar no banco
+        const mapeamento = {
+            'nome': buscarValor('Nome'),
+            'sobrenome': buscarValor('Sobrenome'),
+            'cpf': buscarValor('CPF'),
+            'whatsapp': buscarValor('WhatsApp'),
+            'bairro': buscarValor('Bairro'),
+            'tipo': buscarValor('Tipo'),
+            'origem': buscarValor('Origem'),
+            'data_nascimento': buscarValor('Data_Nascimento') || buscarValor('Nascimento')
+        };
+
+        // Preenche os campos do formulário no topo da página
+        for (let idHtml in mapeamento) {
+            const el = document.getElementById(idHtml);
+            if (el) {
+                el.value = mapeamento[idHtml];
+                console.log(`Preenchendo ${idHtml} com:`, mapeamento[idHtml]);
+            }
         }
 
-        // Guarda o ID para a função salvar saber que é uma atualização
-        if (document.getElementById('edit-id')) {
-            document.getElementById('edit-id').value = r.id || r.Cadastrador_ID;
-        }
-
-        if (document.getElementById('titulo-form')) {
-            document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
-        }
+        // Configura IDs e Botões
+        if (document.getElementById('edit-id')) document.getElementById('edit-id').value = r.id || idOriginal;
+        if (document.getElementById('titulo-form')) document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
         
         document.getElementById('botoes-acao')?.classList.add('hidden');
         document.getElementById('botoes-edicao')?.classList.remove('hidden');
