@@ -247,7 +247,7 @@ function prepararEdicao(id) {
     try {
         const tx = db.transaction("cadastros", "readonly");
         const store = tx.objectStore("cadastros");
-        const request = store.get(id);
+        const request = store.get(String(id));
 
         request.onsuccess = (e) => {
             const r = e.target.result;
