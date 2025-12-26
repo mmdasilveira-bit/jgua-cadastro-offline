@@ -100,35 +100,46 @@ async function salvar() {
     const cpf = document.getElementById('cpf').value;
     const userAtual = document.getElementById('label-nome-user').innerText;
 
-    if (!nome || !cpf) return alert("Campos obrigatórios!");
+    if (!nome || !cpf) return alert("Campos obrigatórios: Nome e CPF!");
 
     const registro = {
         id: editId || "CAD-" + new Date().getTime(),
-        tipo: document.getElementById('tipo').value, 
-        nome: nome,
-        sobrenome: document.getElementById('sobrenome')?.value || "",
-        cpf: cpf,
-        whatsapp: document.getElementById('whatsapp').value,
-        bairro: document.getElementById('bairro').value,
-        origem: document.getElementById('origem').value,
-        atualizado_por: userAtual,
-        atualizado_em: new Date().toLocaleString()
+        Tipo: document.getElementById('tipo').value, 
+        Nome: nome,
+        Sobrenome: document.getElementById('sobrenome')?.value || "",
+        CPF: cpf,
+        WhatsApp: document.getElementById('whatsapp').value,
+        Bairro: document.getElementById('bairro').value,
+        Origem: document.getElementById('origem').value,
+        // Adicione aqui outros campos seguindo o mesmo padrão se necessário
+        Atualizado_Por: userAtual,
+        Atualizado_Em: new Date().toLocaleString()
     };
 
     if (!editId) {
-        registro.criado_por = userAtual;
-        registro.criado_em = new Date().toLocaleString();
+        registro.Criado_Por = userAtual;
+        registro.Criado_Em = new Date().toLocaleString();
     }
 
     try {
-        fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
+        // Envia para a Planilha Google
+        fetch(URL_PLANILHA, { 
+            method: 'POST', 
+            mode: 'no-cors', 
+            body: JSON.stringify(registro) 
+        });
+
+        // Grava no Banco Local (IndexedDB)
         const tx = db.transaction("cadastros", "readwrite");
         tx.objectStore("cadastros").put(registro);
+        
         tx.oncomplete = () => {
-            alert("Salvo!");
+            alert(editId ? "Cadastro Atualizado!" : "Novo Cadastro Salvo!");
             location.reload(); 
         };
-    } catch (e) { alert("Erro ao salvar."); }
+    } catch (e) { 
+        alert("Erro ao salvar."); 
+    }
 }
 
 function criarUsuario() {
