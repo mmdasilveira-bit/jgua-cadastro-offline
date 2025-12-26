@@ -158,14 +158,21 @@ function listarUsuarios() {
 
 function atualizarMonitor() {
     if (!db || !document.getElementById('contador-total')) return;
+    
     db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
         const registros = e.target.result;
         document.getElementById('contador-total').innerText = registros.length;
+        
+        // CÁLCULO DA MÉDIA DE IDADE (Requisito Mantido)
+        const idades = registros.map(r => parseInt(r.idade)).filter(i => !isNaN(i) && i > 0);
+        const media = idades.length ? Math.round(idades.reduce((a, b) => a + b) / idades.length) : 0;
+        document.getElementById('media-idade').innerText = "Média Idade: " + media;
+
         let html = "";
         registros.reverse().slice(0, 20).forEach(r => {
-            html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')">
+            html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
                 <strong>${r.nome}</strong> - ${r.bairro || '---'}<br>
-                <small>CPF: ${r.cpf}</small></div>`;
+                <small>CPF: ${r.cpf} | Idade: ${r.idade || '---'}</small></div>`;
         });
         document.getElementById('lista-cadastros').innerHTML = html || "Vazio.";
     };
