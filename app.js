@@ -234,10 +234,10 @@ function listarUsuarios() {
                     : "<small>Mestre</small>"}
                 </td>
             </tr>`;
-        }); // Fecha o forEach
+        }); // <-- FECHA O forEach
         listaDiv.innerHTML = html + "</table>";
-    }; // Fecha o onsuccess
-} // Fecha a função listarUsuarios
+    }; // <-- FECHA O onsuccess
+} // <-- FECHA A FUNÇÃO listarUsuarios
 
 function excluirU(codigo) {
     if(!confirm("Tem certeza que deseja remover este acesso?")) return;
