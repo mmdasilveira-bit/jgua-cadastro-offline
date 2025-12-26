@@ -1,4 +1,4 @@
-//indexedDB.deleteDatabase("JGUA_DB");
+/indexedDB.deleteDatabase("JGUA_DB");
 //https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
@@ -53,15 +53,9 @@ function autenticar() {
             document.getElementById('conteudo').classList.remove('hidden');
             
             if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
-            if(u.perfil === "GESTOR" && document.getElementById('secao-admin-users')) {
-                document.getElementById('secao-admin-users').classList.remove('hidden');
-            }
-            
-            // --- ADICIONE ESTA LINHA ABAIXO ---
-            listarUsuarios(); 
-            // ---------------------------------
             
             atualizarMonitor();
+            listarUsuarios();
         } else { alert("Código inválido!"); }
     };
 }
@@ -183,3 +177,5 @@ async function buscarCEP() {
         });
     }
 }
+
+
