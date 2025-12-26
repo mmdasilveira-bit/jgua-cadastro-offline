@@ -226,7 +226,7 @@ function excluirU(c) {
 function prepararEdicao(id) {
     db.transaction("cadastros", "readonly").objectStore("cadastros").get(id).onsuccess = (e) => {
         const r = e.target.result;
-        const campos = ["nome", "sobrenome", "cpf", "whatsapp", "bairro", "tipo", "origem"];
+        const campos = ["Nome", "Sobrenome", "CPF", "Whatsapp", "Bairro", "Tipo", "Origem"];
         campos.forEach(c => { 
             if(document.getElementById(c)) document.getElementById(c).value = r[c] || ""; 
         });
