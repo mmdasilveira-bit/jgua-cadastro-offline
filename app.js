@@ -36,44 +36,34 @@ request.onupgradeneeded = (e) => {
 function autenticar() {
     const cod = document.getElementById('input-codigo').value;
     
-    // CORREÇÃO PARA O CHROME: Verifica se o banco já abriu
     if (!db) {
-        console.log("Aguardando banco de dados...");
-        alert("O sistema ainda está carregando os dados. Aguarde 3 segundos e tente novamente.");
+        alert("O banco de dados ainda não carregou. Aguarde um instante.");
         return;
     }
 
-    try {
-        const tx = db.transaction("usuarios", "readonly");
-        const store = tx.objectStore("usuarios");
-        const consulta = store.get(cod);
-
-        consulta.onsuccess = () => {
-            const u = consulta.result;
-            if (u) {
-                document.getElementById('label-perfil').innerText = u.perfil;
-                document.getElementById('label-nome-user').innerText = u.nome;
-                document.getElementById('secao-login').classList.add('hidden');
-                document.getElementById('conteudo').classList.remove('hidden');
-                
-                // Requisitos de visibilidade mantidos
-                if(u.perfil === "CADASTRADOR") {
-                    document.getElementById('monitor').classList.add('hidden');
-                }
-                if(u.perfil === "GESTOR") {
-                    document.getElementById('secao-admin-users')?.classList.remove('hidden');
-                }
-                
-                atualizarMonitor();
-                listarUsuarios();
-            } else { 
-                alert("Código inválido!"); 
-            }
-        };
-    } catch (e) {
-        console.error("Erro ao acessar banco:", e);
-        alert("Erro técnico: O banco de dados não respondeu. Recarregue a página (F5).");
-    }
+    const tx = db.transaction("usuarios", "readonly");
+    const store = tx.objectStore("usuarios");
+    
+    store.get(cod).onsuccess = (e) => {
+        const u = e.target.result;
+        if (u) {
+            document.getElementById('label-perfil').innerText = u.perfil;
+            document.getElementById('label-nome-user').innerText = u.nome;
+            document.getElementById('secao-login').classList.add('hidden');
+            document.getElementById('conteudo').classList.remove('hidden');
+            
+            if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
+            if(u.perfil === "GESTOR") document.getElementById('secao-admin-users')?.classList.remove('hidden');
+            
+            // FORÇA O CHROME A ACORDAR A SINCRONIZAÇÃO AQUI
+            sincronizarDadosDaNuvem(); 
+            
+            atualizarMonitor();
+            listarUsuarios();
+        } else { 
+            alert("Código inválido!"); 
+        }
+    };
 }
 
 
