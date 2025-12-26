@@ -36,23 +36,50 @@ async function sincronizarDadosDaNuvem() {
 
 function autenticar() {
     const cod = document.getElementById('input-codigo').value;
-    const tx = db.transaction("usuarios", "readonly");
-    const store = tx.objectStore("usuarios");
-    store.get(cod).onsuccess = (e) => {
-        const u = e.target.result;
-        if (u) {
-            document.getElementById('label-perfil').innerText = u.perfil;
-            document.getElementById('label-nome-user').innerText = u.nome;
-            document.getElementById('secao-login').classList.add('hidden');
-            document.getElementById('conteudo').classList.remove('hidden');
-            if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
-            if(u.perfil === "GESTOR") document.getElementById('secao-admin-users')?.classList.remove('hidden');
-            atualizarMonitor();
-            listarUsuarios();
-        } else { alert("Código inválido!"); }
-    };
-}
+    
+    // Proteção: Se o banco ainda não conectou, tentamos usar a variável global ou alertamos
+    if (!db) {
+        alert("O sistema ainda está carregando o banco de dados local. Aguarde 2 segundos e tente novamente.");
+        return;
+    }
 
+    try {
+        const tx = db.transaction("usuarios", "readonly");
+        const store = tx.objectStore("usuarios");
+        const consulta = store.get(cod);
+
+        consulta.onsuccess = () => {
+            const u = consulta.result;
+            if (u) {
+                document.getElementById('label-perfil').innerText = u.perfil;
+                document.getElementById('label-nome-user').innerText = u.nome;
+                document.getElementById('secao-login').classList.add('hidden');
+                document.getElementById('conteudo').classList.remove('hidden');
+                
+                // Regras de Perfil (Mantendo seus Requisitos)
+                if(u.perfil === "CADASTRADOR") {
+                    if(document.getElementById('monitor')) document.getElementById('monitor').classList.add('hidden');
+                }
+                if(u.perfil === "GESTOR") {
+                    if(document.getElementById('secao-admin-users')) document.getElementById('secao-admin-users').classList.remove('hidden');
+                }
+                
+                atualizarMonitor();
+                listarUsuarios();
+            } else { 
+                alert("Código inválido!"); 
+            }
+        };
+
+        consulta.onerror = () => {
+            console.error("Erro na consulta de usuário");
+        };
+
+    } catch (err) {
+        console.error("Erro ao abrir transação:", err);
+        alert("Erro de conexão com o banco. Por favor, recarregue a página (F5).");
+    }
+}
 async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const nome = document.getElementById('nome').value.trim();
