@@ -251,46 +251,46 @@ function prepararEdicao(idOriginal) {
     request.onsuccess = (e) => {
         const r = e.target.result;
         if (!r) {
-            // Se não achou como String, tenta como Number antes de desistir
             if (typeof idOriginal === "string") return prepararEdicao(Number(idOriginal));
             return;
         }
 
-        // FUNÇÃO CURINGA: Busca o valor ignorando se é Maiúsculo ou Minúsculo
-        const buscarValor = (campoAlvo) => {
-            const chaves = Object.keys(r);
-            const chaveEncontrada = chaves.find(k => k.toLowerCase() === campoAlvo.toLowerCase());
-            return chaveEncontrada ? r[chaveEncontrada] : "";
+        console.log("Registro encontrado:", r);
+
+        // MAPEAMENTO EXATO (ID do HTML -> Coluna da Planilha)
+        const mapa = {
+            'nome': r.Nome || r.nome,
+            'sobrenome': r.Sobrenome || r.sobrenome,
+            'cpf': r.CPF || r.cpf,
+            'whatsapp': r.WhatsApp || r.whatsapp,
+            'bairro': r.Bairro || r.bairro,
+            'data_nascimento': r.Data_Nascimento || r.data_nascimento,
+            'tipo': r.Status || r.tipo, // Ajustado para a coluna 'Status' ou 'tipo'
+            'origem': r.Canal_Preferencial || r.origem
         };
 
-        // IDs do seu HTML -> O que ele deve buscar no banco
-        const mapeamento = {
-            'nome': buscarValor('Nome'),
-            'sobrenome': buscarValor('Sobrenome'),
-            'cpf': buscarValor('CPF'),
-            'whatsapp': buscarValor('WhatsApp'),
-            'bairro': buscarValor('Bairro'),
-            'tipo': buscarValor('Tipo'),
-            'origem': buscarValor('Origem'),
-            'data_nascimento': buscarValor('Data_Nascimento') || buscarValor('Nascimento')
-        };
-
-        // Preenche os campos do formulário no topo da página
-        for (let idHtml in mapeamento) {
+        // Preenche os campos no topo da página
+        for (let idHtml in mapa) {
             const el = document.getElementById(idHtml);
             if (el) {
-                el.value = mapeamento[idHtml];
-                console.log(`Preenchendo ${idHtml} com:`, mapeamento[idHtml]);
+                el.value = mapa[idHtml] || "";
             }
         }
 
-        // Configura IDs e Botões
-        if (document.getElementById('edit-id')) document.getElementById('edit-id').value = r.id || idOriginal;
-        if (document.getElementById('titulo-form')) document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
+        // Garante que o ID de controle seja salvo para a atualização
+        if (document.getElementById('edit-id')) {
+            document.getElementById('edit-id').value = r.id || idOriginal;
+        }
+
+        // Muda visualmente para modo de edição
+        if (document.getElementById('titulo-form')) {
+            document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
+        }
         
         document.getElementById('botoes-acao')?.classList.add('hidden');
         document.getElementById('botoes-edicao')?.classList.remove('hidden');
 
+        // Sobe a tela suavemente para o formulário
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 }
