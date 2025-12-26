@@ -220,24 +220,22 @@ function atualizarMonitor() {
 
 
 function excluirU(c) {
-    if(confirm("Excluir?")) db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(c).onsuccess = () => listarUsuarios();
+    if(confirm("Excluir?")) {
+        db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(c).onsuccess = () => listarUsuarios();
+    }
 }
 
 function prepararEdicao(id) {
-    console.log("Tentando editar o ID:", id); // Log para debug no F12
-    
-    const transaction = db.transaction("cadastros", "readonly");
-    const store = transaction.objectStore("cadastros");
+    console.log("Iniciando edição do ID:", id);
+    const tx = db.transaction("cadastros", "readonly");
+    const store = tx.objectStore("cadastros");
     
     store.get(id).onsuccess = (e) => {
         const r = e.target.result;
-        if (!r) {
-            alert("Erro: Registro não encontrado no banco local.");
-            return;
-        }
+        if (!r) return;
 
-        // Mapeamento: ID do HTML -> Nome da Coluna no Banco (Maiúsculo ou Minúsculo)
-        const mapaCampos = {
+        // IDs do HTML -> Dados do Banco (Maiúsculo ou Minúsculo)
+        const campos = {
             'nome': r.Nome || r.nome,
             'sobrenome': r.Sobrenome || r.sobrenome,
             'cpf': r.CPF || r.cpf,
@@ -248,33 +246,21 @@ function prepararEdicao(id) {
             'data_nascimento': r.Data_Nascimento || r.data_nascimento
         };
 
-        // Preenche cada campo se o elemento existir no HTML
-        for (let idHtml in mapaCampos) {
-            const campo = document.getElementById(idHtml);
-            if (campo) {
-                campo.value = mapaCampos[idHtml] || "";
-            }
+        for (let idHtml in campos) {
+            const el = document.getElementById(idHtml);
+            if (el) el.value = campos[idHtml] || "";
         }
 
-        // Preenche o ID oculto para saber que é uma edição
-        const inputId = document.getElementById('edit-id');
-        if (inputId) inputId.value = r.id;
-
-        // Muda o título e alterna os botões
-        const titulo = document.getElementById('titulo-form');
-        if (titulo) titulo.innerText = "Atualizar Cadastro";
-
-        const btnAcao = document.getElementById('botoes-acao');
-        const btnEdicao = document.getElementById('botoes-edicao');
+        if (document.getElementById('edit-id')) document.getElementById('edit-id').value = r.id;
+        if (document.getElementById('titulo-form')) document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
         
-        if (btnAcao) btnAcao.classList.add('hidden');
-        if (btnEdicao) btnEdicao.classList.remove('hidden');
+        document.getElementById('botoes-acao')?.classList.add('hidden');
+        document.getElementById('botoes-edicao')?.classList.remove('hidden');
 
-        // Sobe a tela para o formulário
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        console.log("Campos preenchidos para:", r.Nome || r.nome);
     };
 }
+
 function cancelarEdicao() { 
     location.reload(); 
 }
@@ -284,8 +270,8 @@ async function buscarCEP() {
     if (cep.length === 8) {
         fetch(`https://viacep.com.br/ws/${cep}/json/`).then(res => res.json()).then(d => {
             if(!d.erro) {
-                document.getElementById('logradouro').value = d.logradouro;
-                document.getElementById('bairro').value = d.bairro;
+                if(document.getElementById('logradouro')) document.getElementById('logradouro').value = d.logradouro;
+                if(document.getElementById('bairro')) document.getElementById('bairro').value = d.bairro;
             }
         });
     }
