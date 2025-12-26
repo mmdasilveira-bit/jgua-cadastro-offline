@@ -226,17 +226,30 @@ function excluirU(c) {
 function prepararEdicao(id) {
     db.transaction("cadastros", "readonly").objectStore("cadastros").get(id).onsuccess = (e) => {
         const r = e.target.result;
-        const campos = ["Nome", "Sobrenome", "CPF", "Whatsapp", "Bairro", "Tipo", "Origem"];
-        campos.forEach(c => { 
-            if(document.getElementById(c)) document.getElementById(c).value = r[c] || ""; 
+        if (!r) return;
+
+        // Lista de campos do seu formulário (IDs do HTML)
+        const campos = ["nome", "sobrenome", "cpf", "whatsapp", "bairro", "tipo", "origem", "data_nascimento"];
+        
+        campos.forEach(c => {
+            const elemento = document.getElementById(c);
+            if (elemento) {
+                // Tenta pegar o valor com a primeira letra maiúscula (ex: Nome) 
+                // ou minúscula (ex: nome)
+                const valor = r[c.charAt(0).toUpperCase() + c.slice(1)] || r[c];
+                elemento.value = valor || "";
+            }
         });
+
         document.getElementById('edit-id').value = r.id;
         document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
         document.getElementById('botoes-acao').classList.add('hidden');
         document.getElementById('botoes-edicao').classList.remove('hidden');
+        
+        // Rola a página para o topo para facilitar a edição
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 }
-
 function cancelarEdicao() { 
     location.reload(); 
 }
