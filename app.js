@@ -214,9 +214,10 @@ function criarUsuario() {
     request.onerror = () => alert("Este código já está em uso!");
 }
 
+// --- FUNÇÃO PARA LISTAR OS INTEGRANTES NA TELA ---
 function listarUsuarios() {
     const listaDiv = document.getElementById('lista-usuarios');
-    if(!listaDiv || !db) return;
+    if (!listaDiv || !db) return;
 
     const tx = db.transaction("usuarios", "readonly");
     const store = tx.objectStore("usuarios");
@@ -234,16 +235,19 @@ function listarUsuarios() {
                     : "<small>Mestre</small>"}
                 </td>
             </tr>`;
-        }); // <-- FECHA O forEach
+        }); // Fecha o forEach
         listaDiv.innerHTML = html + "</table>";
-    }; // <-- FECHA O onsuccess
-} // <-- FECHA A FUNÇÃO listarUsuarios
+    }; // Fecha o onsuccess
+} // Fecha a função listarUsuarios
 
+// --- FUNÇÃO PARA EXCLUIR UM INTEGRANTE ---
 function excluirU(codigo) {
-    if(!confirm("Tem certeza que deseja remover este acesso?")) return;
+    if (!confirm("Tem certeza que deseja remover este acesso?")) return;
     
     const tx = db.transaction("usuarios", "readwrite");
-    tx.objectStore("usuarios").delete(codigo).onsuccess = () => {
+    const store = tx.objectStore("usuarios");
+    
+    store.delete(codigo).onsuccess = () => {
         listarUsuarios();
     };
 }
