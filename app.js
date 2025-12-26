@@ -1,8 +1,8 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
 let db;
-// Mantemos JGUA_FINAL_DB para garantir um ambiente limpo no seu Linux
-const request = indexedDB.open("JGUA_FINAL_DB", 1);
+// Usamos JGUA_FINAL_DB_V2 para forçar um reset completo no seu navegador Linux
+const request = indexedDB.open("JGUA_FINAL_DB_V2", 1);
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
@@ -15,7 +15,7 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => { 
     db = e.target.result; 
-    console.log("Banco JGUA_FINAL_DB aberto.");
+    console.log("Banco aberto com sucesso.");
     sincronizarDadosDaNuvem();
 };
 
@@ -28,7 +28,7 @@ async function sincronizarDadosDaNuvem() {
         registrosNuvem.forEach(reg => { if (reg.id) store.put(reg); });
         tx.oncomplete = () => {
             console.log("Sincronização OK: " + registrosNuvem.length);
-            if(document.getElementById('contador-total')) atualizarMonitor();
+            atualizarMonitor();
         };
     } catch (error) { console.error("Falha na sincronização:", error); }
 }
@@ -37,17 +37,18 @@ function autenticar() {
     const cod = document.getElementById('input-codigo').value;
     const tx = db.transaction("usuarios", "readonly");
     const store = tx.objectStore("usuarios");
-    store.get(cod).onsuccess = (e) => {
-        const u = e.target.result;
+    const consulta = store.get(cod);
+
+    consulta.onsuccess = () => {
+        const u = consulta.result;
         if (u) {
             document.getElementById('label-perfil').innerText = u.perfil;
             document.getElementById('label-nome-user').innerText = u.nome;
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
             if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
-            
             atualizarMonitor();
-            listarUsuarios(); // Garante que a lista de gestores apareça
+            listarUsuarios();
         } else { alert("Código inválido!"); }
     };
 }
@@ -60,7 +61,6 @@ function atualizarMonitor() {
         document.getElementById('contador-total').innerText = registros.length;
         const filtrados = registros.filter(r => 
             (r.nome||"").toLowerCase().includes(termo) || 
-            (r.sobrenome||"").toLowerCase().includes(termo) || 
             (r.cpf||"").includes(termo) ||
             (r.bairro||"").toLowerCase().includes(termo)
         );
