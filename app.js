@@ -1,7 +1,7 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
 
 let db;
-// Subimos a versão para 20 para limpar qualquer conflito anterior no seu Linux
+// Mantemos a versão 20 para garantir que ele limpe os erros anteriores
 const request = indexedDB.open("JGUA_FINAL_DB", 20);
 
 request.onupgradeneeded = (e) => {
@@ -12,7 +12,6 @@ request.onupgradeneeded = (e) => {
     if (!db.objectStoreNames.contains("usuarios")) {
         db.createObjectStore("usuarios", { keyPath: "codigo" });
     }
-    // Cria o mestre se não existir
     const store = e.currentTarget.transaction.objectStore("usuarios");
     store.put({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
 };
@@ -22,31 +21,23 @@ request.onsuccess = (e) => {
     sincronizarDadosDaNuvem();
 };
 
-// --- SINCRONIZAÇÃO QUE NÃO TRAVA O BANCO ---
 async function sincronizarDadosDaNuvem() {
     try {
         const response = await fetch(URL_PLANILHA, { method: "GET", redirect: "follow" });
         const registrosNuvem = await response.json();
-        
-        // Abrimos uma transação focada apenas em cadastros
         const tx = db.transaction("cadastros", "readwrite");
         const store = tx.objectStore("cadastros");
-        
         registrosNuvem.forEach(reg => { if (reg.id) store.put(reg); });
-        
         tx.oncomplete = () => {
-            console.log("Sincronia concluída.");
             if(document.getElementById('contador-total')) atualizarMonitor();
         };
     } catch (error) { console.error("Erro na nuvem."); }
 }
 
-// --- LOGIN COM REGRAS DE PERFIL (324 LINHAS LÓGICA) ---
 function autenticar() {
     const cod = document.getElementById('input-codigo').value;
     const tx = db.transaction("usuarios", "readonly");
     const store = tx.objectStore("usuarios");
-    
     store.get(cod).onsuccess = (e) => {
         const u = e.target.result;
         if (u) {
@@ -54,22 +45,14 @@ function autenticar() {
             document.getElementById('label-nome-user').innerText = u.nome;
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
-            
-            // Regras de Visibilidade Originais
-            if(u.perfil === "CADASTRADOR") {
-                document.getElementById('monitor').classList.add('hidden');
-            }
-            if(u.perfil === "GESTOR") {
-                document.getElementById('secao-admin-users')?.classList.remove('hidden');
-            }
-            
+            if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
+            if(u.perfil === "GESTOR") document.getElementById('secao-admin-users')?.classList.remove('hidden');
             atualizarMonitor();
             listarUsuarios();
         } else { alert("Código inválido!"); }
     };
 }
 
-// --- SALVAR COM TODOS OS CAMPOS E AUDITORIA ---
 async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const nome = document.getElementById('nome').value.trim();
@@ -87,7 +70,6 @@ async function salvar() {
         whatsapp: document.getElementById('whatsapp').value,
         bairro: document.getElementById('bairro').value,
         origem: document.getElementById('origem').value,
-        // Auditoria
         atualizado_por: userAtual,
         atualizado_em: new Date().toLocaleString()
     };
@@ -108,12 +90,10 @@ async function salvar() {
     } catch (e) { alert("Erro ao salvar."); }
 }
 
-// --- GESTÃO DE USUÁRIOS (NÃO AFETA OS CADASTROS) ---
 function criarUsuario() {
     const nome = document.getElementById('novo-nome').value.trim();
     const codigo = document.getElementById('novo-codigo').value.trim();
     const perfil = document.getElementById('novo-perfil').value;
-
     const tx = db.transaction("usuarios", "readwrite");
     tx.objectStore("usuarios").put({ codigo, nome, perfil });
     tx.oncomplete = () => {
