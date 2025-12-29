@@ -90,39 +90,58 @@ function autenticar() {
 
 async function salvar() {
     const editId = document.getElementById('edit-id').value;
-    const nome = document.getElementById('nome').value.trim();
+    const nomeComp = document.getElementById('nome_completo').value.trim();
     const cpf = document.getElementById('cpf').value;
     const userAtual = document.getElementById('label-nome-user').innerText;
 
-    if (!nome || !cpf) return alert("Nome e CPF são obrigatórios!");
+    if (!nomeComp || !cpf) {
+        return alert("Nome Completo e CPF são obrigatórios!");
+    }
 
+    // Montando o registro exatamente como sua planilha nova deve receber
     const registro = {
         "Cadastrador_ID": editId || "CAD-" + new Date().getTime(),
         "Status": "Ativo", 
-        "Perfil": document.getElementById('tipo').value, // Associado ou Adepto
-        "Nome": nome,
-        "Sobrenome": document.getElementById('sobrenome').value,
+        "Perfil": document.getElementById('tipo').value,
+        "Nome_Completo": nomeComp, // Campo unificado
         "CPF": cpf,
+        "Sexo": document.getElementById('sexo').value,
+        "Data_Nascimento": document.getElementById('nascimento').value,
         "WhatsApp": document.getElementById('whatsapp').value,
+        "Email": document.getElementById('email').value,
+        "CEP": document.getElementById('cep').value,
         "Bairro": document.getElementById('bairro').value,
+        "Rua": document.getElementById('logradouro').value,
+        "Numero": document.getElementById('numero').value,
         "Canal_Preferencial": document.getElementById('origem').value,
-        "Data_Nascimento": document.getElementById('data_nascimento').value,
         "Atualizado_Por": userAtual,
         "Atualizado_Em": new Date().toLocaleString()
     };
 
     try {
-        fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
+        // Envia para o Google Apps Script
+        fetch(URL_PLANILHA, { 
+            method: 'POST', 
+            mode: 'no-cors', 
+            body: JSON.stringify(registro) 
+        });
 
+        // Atualiza o banco de dados local (IndexedDB)
         const tx = db.transaction("cadastros", "readwrite");
+        const store = tx.objectStore("cadastros");
+        
+        // Criamos o 'id' que o IndexedDB exige usando o Cadastrador_ID
         const registroLocal = {...registro, id: String(registro.Cadastrador_ID)};
-        tx.objectStore("cadastros").put(registroLocal);
+        store.put(registroLocal);
         
         tx.oncomplete = () => {
-            alert(editId ? "Cadastro atualizado!" : "Cadastrado com sucesso!");
+            alert(editId ? "Cadastro de " + nomeComp + " atualizado!" : "Novo cadastro realizado!");
             location.reload(); 
         };
-    } catch (e) { alert("Erro ao salvar."); }
+    } catch (e) { 
+        alert("Erro ao salvar dados."); 
+        console.error(e);
+    }
 }
 
 function criarUsuario() {
