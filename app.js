@@ -162,18 +162,14 @@ function atualizarMonitor() {
         const hoje = new Date();
 
         registros.forEach(r => {
-            // Tenta pegar a data tanto com D maiúsculo quanto minúsculo
             const dataNascRaw = r.Data_Nascimento || r.data_nascimento || r.nascimento;
-            
             if (dataNascRaw) {
                 const nasc = new Date(dataNascRaw);
                 if (!isNaN(nasc.getTime())) {
                     let idade = hoje.getFullYear() - nasc.getFullYear();
                     const m = hoje.getMonth() - nasc.getMonth();
-                    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
-                        idade--;
-                    }
-                    if (idade >= 0 && idade < 120) { // Validação simples de idade real
+                    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+                    if (idade >= 0 && idade < 120) {
                         somaIdades += idade;
                         contagemComData++;
                     }
@@ -186,14 +182,15 @@ function atualizarMonitor() {
         if(labelMedia) labelMedia.innerText = "Média Idade: " + media;
 
         let html = "";
+        // Criando a lista de nomes
         registros.reverse().slice(0, 20).forEach(r => {
-            // Tenta Nome ou nome / Bairro ou bairro / CPF ou cpf
             const vNome = r.Nome || r.nome || "Sem Nome";
             const vBairro = r.Bairro || r.bairro || "---";
             const vCPF = r.CPF || r.cpf || "---";
             const vNasc = r.Data_Nascimento || r.data_nascimento || "---";
 
-            html += `<div class="item-lista" onclick="('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
+            // AQUI ESTÁ A CORREÇÃO: Adicionamos o nome 'prepararEdicao' no clique
+            html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
                 <strong>${vNome}</strong> - ${vBairro}<br>
                 <small>CPF: ${vCPF} | Nasc: ${vNasc}</small></div>`;
         });
@@ -209,7 +206,7 @@ function excluirU(c) {
 }
 
 function prepararEdicao(idOriginal) {
-    console.log("Editando ID:", idOriginal);
+    console.log("Iniciando preenchimento para ID:", idOriginal);
     if (!db) return;
 
     const tx = db.transaction("cadastros", "readonly");
@@ -221,31 +218,32 @@ function prepararEdicao(idOriginal) {
         if (!r && typeof idOriginal === "string") return prepararEdicao(Number(idOriginal));
         if (!r) return;
 
-        // Mapeamento exato da sua planilha
+        // MAPEAMENTO DOS CAMPOS (Planilha -> Seu HTML)
         const mapa = {
+            'tipo': r.Perfil,
+            'origem': r.Canal_Preferencial,
             'nome': r.Nome,
             'sobrenome': r.Sobrenome,
             'cpf': r.CPF,
+            'sexo': r.Sexo,
+            'nascimento': r.Data_Nascimento || r.nascimento, // Ajustado para o ID do seu HTML
             'whatsapp': r.WhatsApp,
+            'email': r.Email,
+            'cep': r.CEP,
             'bairro': r.Bairro,
-            'data_nascimento': r.Data_Nascimento,
-            'tipo': r.Perfil,            // Associado ou Adepto
-            'origem': r.Canal_Preferencial
+            'logradouro': r.Rua || r.logradouro,
+            'numero': r.Numero
         };
 
-        // Preenche e DESBLOQUEIA os campos (liberando o validador)
+        // Colocando os dados nas caixas e liberando para editar
         for (let idHtml in mapa) {
             const el = document.getElementById(idHtml);
             if (el) {
                 el.value = mapa[idHtml] || "";
-                el.disabled = false; // Libera para editar
+                el.disabled = false;
                 el.readOnly = false;
             }
         }
-
-        // Libera o botão salvar manualmente
-        const btnSalvar = document.getElementById('btn-salvar');
-        if (btnSalvar) btnSalvar.disabled = false;
 
         document.getElementById('edit-id').value = r.Cadastrador_ID || r.id || idOriginal;
         document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
