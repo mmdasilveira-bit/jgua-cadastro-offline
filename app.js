@@ -1,21 +1,15 @@
-const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec"; 
+const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec";
 let db;
 
-// Conexão com o banco local
-const request = indexedDB.open("JGUA_FINAL_DB", 20); 
+const request = indexedDB.open("JGUA_FINAL_DB", 20);
 
-const btnAcessar = document.querySelector('button[onclick="autenticar()"]');
-if (btnAcessar) {
-    btnAcessar.disabled = true;
-    btnAcessar.innerText = "Carregando Banco...";
-}
-
-request.onsuccess = (e) => { 
-    db = e.target.result; 
+request.onsuccess = (e) => {
+    db = e.target.result;
     console.log("Banco pronto no Chrome.");
-    if (btnAcessar) {
-        btnAcessar.disabled = false;
-        btnAcessar.innerText = "Acessar Sistema";
+    const btn = document.querySelector('button[onclick="autenticar()"]');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerText = "Acessar Sistema";
     }
 };
 
