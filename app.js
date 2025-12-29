@@ -98,25 +98,25 @@ async function salvar() {
         return alert("Nome Completo e CPF são obrigatórios!");
     }
 
-    // Montando o registro exatamente como sua planilha nova deve receber
-    const registro = {
-        "Cadastrador_ID": editId || "CAD-" + new Date().getTime(),
-        "Status": "Ativo", 
-        "Perfil": document.getElementById('tipo').value,
-        "Nome_Completo": nomeComp, // Campo unificado
-        "CPF": cpf,
-        "Sexo": document.getElementById('sexo').value,
-        "Data_Nascimento": document.getElementById('nascimento').value,
-        "WhatsApp": document.getElementById('whatsapp').value,
-        "Email": document.getElementById('email').value,
-        "CEP": document.getElementById('cep').value,
-        "Bairro": document.getElementById('bairro').value,
-        "Rua": document.getElementById('logradouro').value,
-        "Numero": document.getElementById('numero').value,
-        "Canal_Preferencial": document.getElementById('origem').value,
-        "Atualizado_Por": userAtual,
-        "Atualizado_Em": new Date().toLocaleString()
-    };
+ // No seu app.js, dentro da função salvar, o objeto registro deve ficar assim:
+const registro = {
+    "Cadastrador_ID": editId || "CAD-" + new Date().getTime(),
+    "Status": "Ativo", 
+    "Perfil": document.getElementById('tipo').value,
+    "Nome_Completo": nomeComp,
+    "CPF": cpf,
+    "Sexo": document.getElementById('sexo').value,
+    "Data_Nascimento": document.getElementById('nascimento').value,
+    "WhatsApp": document.getElementById('whatsapp').value,
+    "Email": document.getElementById('email').value,
+    "CEP": document.getElementById('cep').value,
+    "Bairro": document.getElementById('bairro').value,
+    "Rua": document.getElementById('logradouro').value,
+    "Numero": document.getElementById('numero').value,
+    "Canal_Preferencial": document.getElementById('origem').value,
+    "Atualizado_Por": document.getElementById('label-nome-user').innerText,
+    "Atualizado_Em": new Date().toLocaleString()
+};
 
     try {
         // Envia para o Google Apps Script
