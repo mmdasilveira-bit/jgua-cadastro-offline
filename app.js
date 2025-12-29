@@ -87,6 +87,9 @@ function autenticar() {
             alert("Código de acesso inválido!"); 
         }
     };
+    // Garante que as seções fiquem escondidas por padrão antes da lógica de perfil rodar
+document.getElementById('monitor').classList.add('hidden');
+document.getElementById('secao-admin-users').classList.add('hidden');
 }
 
 async function salvar() {
