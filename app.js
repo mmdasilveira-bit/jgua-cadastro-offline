@@ -95,16 +95,26 @@ document.getElementById('secao-admin-users').classList.add('hidden');
 async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const nomeComp = document.getElementById('nome_completo').value.trim();
-    const cpf = document.getElementById('cpf').value;
+    const cpfLimpo = document.getElementById('cpf').value.replace(/\D/g, ''); // Remove pontos e traços para comparar
 
-    if (!nomeComp || !cpf) return alert("Nome e CPF obrigatórios!");
+    if (!nomeComp || !cpfLimpo) return alert("Nome e CPF são obrigatórios!");
+
+    // --- NOVA TRAVA DE DUPLICIDADE ---
+    // Se não for uma edição de um cadastro existente, verifica se o CPF já existe
+    if (!editId) {
+        const existe = await verificarCPFDuplicado(document.getElementById('cpf').value);
+        if (existe) {
+            alert("ERRO: Este CPF já está cadastrado no sistema!");
+            return; // Interrompe o salvamento
+        }
+    }
 
     const registro = {
         "Cadastrador_ID": editId || "CAD-" + new Date().getTime(),
         "Status": "Ativo", 
         "Perfil": document.getElementById('tipo').value,
         "Nome_Completo": nomeComp,
-        "CPF": cpf,
+        "CPF": document.getElementById('cpf').value,
         "Sexo": document.getElementById('sexo').value,
         "Data_Nascimento": document.getElementById('nascimento').value,
         "WhatsApp": document.getElementById('whatsapp').value,
@@ -124,10 +134,25 @@ async function salvar() {
         const registroLocal = {...registro, id: String(registro.Cadastrador_ID)};
         tx.objectStore("cadastros").put(registroLocal);
         tx.oncomplete = () => {
-            alert("Sucesso!");
+            alert("Cadastro realizado com sucesso!");
             location.reload(); 
         };
-    } catch (e) { alert("Erro ao salvar."); }
+    } catch (e) { alert("Erro ao conectar com a nuvem."); }
+}
+
+// Função auxiliar para buscar o CPF no banco local
+function verificarCPFDuplicado(cpfParaChecar) {
+    return new Promise((resolve) => {
+        const tx = db.transaction("cadastros", "readonly");
+        const store = tx.objectStore("cadastros");
+        const request = store.getAll();
+
+        request.onsuccess = (e) => {
+            const todos = e.target.result;
+            const duplicado = todos.some(r => r.CPF === cpfParaChecar);
+            resolve(duplicado);
+        };
+    });
 }
 
 function atualizarMonitor() {
