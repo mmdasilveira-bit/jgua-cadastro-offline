@@ -53,38 +53,38 @@ function autenticar() {
     store.get(cod).onsuccess = (e) => {
         const u = e.target.result;
         if (u) {
-            // Preenche as etiquetas de identificação
+            // Identificação do Usuário
             document.getElementById('label-perfil').innerText = u.perfil;
             document.getElementById('label-nome-user').innerText = u.nome;
             
-            // Esconde o login e mostra o conteúdo
+            // Troca de tela: Login -> Sistema
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
             
-            // --- LÓGICA DE MENUS POR PERFIL ---
-            
-            // 1. Monitor (Lista de nomes): Esconde apenas para CADASTRADOR
-            if (u.perfil === "CADASTRADOR") {
-                document.getElementById('monitor').classList.add('hidden');
-            } else {
-                document.getElementById('monitor').classList.remove('hidden');
-            }
-
-            // 2. Gestão de Integrantes (Criar novos códigos): Apenas para GESTOR
+            // --- CONTROLE DE VISIBILIDADE POR PERFIL ---
+            const monitor = document.getElementById('monitor');
             const secaoAdmin = document.getElementById('secao-admin-users');
+
+            // 1. GESTOR: Vê absolutamente tudo
             if (u.perfil === "GESTOR") {
+                monitor?.classList.remove('hidden');
                 secaoAdmin?.classList.remove('hidden');
-            } else {
+            } 
+            // 2. CADASTRADOR: Vê apenas o formulário (esconde o monitor e admin)
+            else if (u.perfil === "CADASTRADOR") {
+                monitor?.classList.add('hidden');
+                secaoAdmin?.classList.add('hidden');
+            }
+            // 3. OUTROS (AVALIADOR, COORDENADOR, VALIDADOR): Vê formulário e monitor
+            else {
+                monitor?.classList.remove('hidden');
                 secaoAdmin?.classList.add('hidden');
             }
 
-            // 3. Permissões Especiais (Avaliador/Coordenador)
-            // Aqui você pode adicionar condições específicas para VALIDADOR ou COORDENADOR futuramente
-            
             sincronizarDadosDaNuvem(); 
             listarUsuarios();
         } else { 
-            alert("Código de acesso não encontrado!"); 
+            alert("Código de acesso inválido!"); 
         }
     };
 }
