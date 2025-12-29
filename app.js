@@ -245,7 +245,7 @@ function prepararEdicao(idOriginal) {
             'logradouro': r.Rua,
             'numero': r.Numero
         };
-
+ 
         for (let idHtml in mapa) {
             const el = document.getElementById(idHtml);
             if (el) {
