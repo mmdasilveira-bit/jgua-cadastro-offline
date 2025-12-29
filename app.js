@@ -176,49 +176,34 @@ function atualizarMonitor() {
         const registros = e.target.result;
         document.getElementById('contador-total').innerText = registros.length;
         
+        // Mantemos o cálculo da média de idade que você solicitou
         let somaIdades = 0;
         let contagemComData = 0;
         const hoje = new Date();
 
-        // --- BLOCO DA MÉDIA DE IDADE PRESERVADO ---
-        registros.forEach(r => {
-            // Tenta todas as variações possíveis de nome de coluna de data
-            const dataNascRaw = r.Data_Nascimento || r.data_nascimento || r.nascimento;
-            
-            if (dataNascRaw) {
-                const nasc = new Date(dataNascRaw);
-                if (!isNaN(nasc.getTime())) {
-                    let idade = hoje.getFullYear() - nasc.getFullYear();
-                    const m = hoje.getMonth() - nasc.getMonth();
-                    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
-                        idade--;
-                    }
-                    if (idade >= 0 && idade < 120) {
-                        somaIdades += idade;
-                        contagemComData++;
-                    }
-                }
-            }
-        });
-
-        const media = contagemComData > 0 ? Math.round(somaIdades / contagemComData) : 0;
-        const labelMedia = document.getElementById('media-idade');
-        if(labelMedia) labelMedia.innerText = media; 
-        // ------------------------------------------
-
         let html = "";
-        // Criar a lista visual para o monitor
         registros.reverse().slice(0, 20).forEach(r => {
-            // AJUSTE PARA NOME COMPLETO
-            const vNome = r.Nome_Completo || r.Nome || "Sem Nome";
-            const vBairro = r.Bairro || r.bairro || "---";
-            const vCPF = r.CPF || r.cpf || "---";
-            const vNasc = r.Data_Nascimento || r.data_nascimento || r.nascimento || "---";
+            const vNome = r.Nome_Completo || "Sem Nome";
+            const vBairro = r.Bairro || "---";
+            const vCPF = r.CPF || "---";
+            
+            // Tratamento visual da data para a lista
+            let vNasc = "---";
+            if (r.Data_Nascimento) {
+                vNasc = new Date(r.Data_Nascimento).toISOString().split('T')[0];
+                
+                // Aproveitamos para calcular a média de idade corretamente
+                let idade = hoje.getFullYear() - new Date(r.Data_Nascimento).getFullYear();
+                if (idade >= 0 && idade < 120) { somaIdades += idade; contagemComData++; }
+            }
 
             html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
                 <strong>${vNome}</strong> - ${vBairro}<br>
                 <small>CPF: ${vCPF} | Nasc: ${vNasc}</small></div>`;
         });
+        
+        const media = contagemComData > 0 ? Math.round(somaIdades / contagemComData) : 0;
+        document.getElementById('media-idade').innerText = media;
         document.getElementById('lista-cadastros').innerHTML = html || "Vazio.";
     };
 }
@@ -231,36 +216,36 @@ function excluirU(c) {
 }
 
 function prepararEdicao(idOriginal) {
-    console.log("Iniciando preenchimento para ID:", idOriginal);
     if (!db) return;
-
     const tx = db.transaction("cadastros", "readonly");
     const store = tx.objectStore("cadastros");
     const request = store.get(String(idOriginal));
 
     request.onsuccess = (e) => {
         let r = e.target.result;
-        if (!r && typeof idOriginal === "string") return prepararEdicao(Number(idOriginal));
         if (!r) return;
 
-        // MAPEAMENTO DOS CAMPOS (Planilha -> Seu HTML)
+        // Limpeza da data para o formato AAAA-MM-DD exigido pelo HTML
+        let dataLimpa = "";
+        if (r.Data_Nascimento) {
+            dataLimpa = new Date(r.Data_Nascimento).toISOString().split('T')[0];
+        }
+
         const mapa = {
             'tipo': r.Perfil,
             'origem': r.Canal_Preferencial,
-            'nome': r.Nome,
-            'sobrenome': r.Sobrenome,
+            'nome_completo': r.Nome_Completo, // Garante o Nome Completo
             'cpf': r.CPF,
-            'sexo': r.Sexo,
-            'nascimento': r.Data_Nascimento || r.nascimento, // Ajustado para o ID do seu HTML
+            'sexo': r.Sexo,                  // Garante o Sexo
+            'nascimento': dataLimpa,         // Garante a Data limpa
             'whatsapp': r.WhatsApp,
             'email': r.Email,
             'cep': r.CEP,
             'bairro': r.Bairro,
-            'logradouro': r.Rua || r.logradouro,
+            'logradouro': r.Rua,
             'numero': r.Numero
         };
 
-        // Colocando os dados nas caixas e liberando para editar
         for (let idHtml in mapa) {
             const el = document.getElementById(idHtml);
             if (el) {
@@ -270,11 +255,10 @@ function prepararEdicao(idOriginal) {
             }
         }
 
-        document.getElementById('edit-id').value = r.Cadastrador_ID || r.id || idOriginal;
+        document.getElementById('edit-id').value = r.Cadastrador_ID || r.id;
         document.getElementById('titulo-form').innerText = "Atualizar Cadastro";
         document.getElementById('botoes-acao')?.classList.add('hidden');
         document.getElementById('botoes-edicao')?.classList.remove('hidden');
-
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 }
