@@ -92,56 +92,38 @@ async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const nomeComp = document.getElementById('nome_completo').value.trim();
     const cpf = document.getElementById('cpf').value;
-    const userAtual = document.getElementById('label-nome-user').innerText;
 
-    if (!nomeComp || !cpf) {
-        return alert("Nome Completo e CPF são obrigatórios!");
-    }
+    if (!nomeComp || !cpf) return alert("Nome e CPF obrigatórios!");
 
- // No seu app.js, dentro da função salvar, o objeto registro deve ficar assim:
-const registro = {
-    "Cadastrador_ID": editId || "CAD-" + new Date().getTime(),
-    "Status": "Ativo", 
-    "Perfil": document.getElementById('tipo').value,
-    "Nome_Completo": nomeComp,
-    "CPF": cpf,
-    "Sexo": document.getElementById('sexo').value,
-    "Data_Nascimento": document.getElementById('nascimento').value,
-    "WhatsApp": document.getElementById('whatsapp').value,
-    "Email": document.getElementById('email').value,
-    "CEP": document.getElementById('cep').value,
-    "Bairro": document.getElementById('bairro').value,
-    "Rua": document.getElementById('logradouro').value,
-    "Numero": document.getElementById('numero').value,
-    "Canal_Preferencial": document.getElementById('origem').value,
-    "Atualizado_Por": document.getElementById('label-nome-user').innerText,
-    "Atualizado_Em": new Date().toLocaleString()
-};
+    const registro = {
+        "Cadastrador_ID": editId || "CAD-" + new Date().getTime(),
+        "Status": "Ativo", 
+        "Perfil": document.getElementById('tipo').value,
+        "Nome_Completo": nomeComp,
+        "CPF": cpf,
+        "Sexo": document.getElementById('sexo').value,
+        "Data_Nascimento": document.getElementById('nascimento').value,
+        "WhatsApp": document.getElementById('whatsapp').value,
+        "Email": document.getElementById('email').value,
+        "CEP": document.getElementById('cep').value,
+        "Bairro": document.getElementById('bairro').value,
+        "Rua": document.getElementById('logradouro').value,
+        "Numero": document.getElementById('numero').value,
+        "Canal_Preferencial": document.getElementById('origem').value,
+        "Atualizado_Por": document.getElementById('label-nome-user').innerText,
+        "Atualizado_Em": new Date().toLocaleString()
+    };
 
     try {
-        // Envia para o Google Apps Script
-        fetch(URL_PLANILHA, { 
-            method: 'POST', 
-            mode: 'no-cors', 
-            body: JSON.stringify(registro) 
-        });
-
-        // Atualiza o banco de dados local (IndexedDB)
+        fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
         const tx = db.transaction("cadastros", "readwrite");
-        const store = tx.objectStore("cadastros");
-        
-        // Criamos o 'id' que o IndexedDB exige usando o Cadastrador_ID
         const registroLocal = {...registro, id: String(registro.Cadastrador_ID)};
-        store.put(registroLocal);
-        
+        tx.objectStore("cadastros").put(registroLocal);
         tx.oncomplete = () => {
-            alert(editId ? "Cadastro de " + nomeComp + " atualizado!" : "Novo cadastro realizado!");
+            alert("Sucesso!");
             location.reload(); 
         };
-    } catch (e) { 
-        alert("Erro ao salvar dados."); 
-        console.error(e);
-    }
+    } catch (e) { alert("Erro ao salvar."); }
 }
 
 function criarUsuario() {
@@ -225,19 +207,24 @@ function prepararEdicao(idOriginal) {
         let r = e.target.result;
         if (!r) return;
 
-        // Limpeza da data para o formato AAAA-MM-DD exigido pelo HTML
+        // Limpa a data (Remove o T03:00...)
         let dataLimpa = "";
         if (r.Data_Nascimento) {
             dataLimpa = new Date(r.Data_Nascimento).toISOString().split('T')[0];
         }
 
+        // Tradutor do Sexo: Garante que "Masculino" ou "Feminino" seja selecionado
+        let sexoTratado = r.Sexo || "";
+        if (sexoTratado === "M") sexoTratado = "Masculino";
+        if (sexoTratado === "F") sexoTratado = "Feminino";
+
         const mapa = {
             'tipo': r.Perfil,
             'origem': r.Canal_Preferencial,
-            'nome_completo': r.Nome_Completo, // Garante o Nome Completo
+            'nome_completo': r.Nome_Completo,
             'cpf': r.CPF,
-            'sexo': r.Sexo,                  // Garante o Sexo
-            'nascimento': dataLimpa,         // Garante a Data limpa
+            'sexo': sexoTratado,
+            'nascimento': dataLimpa,
             'whatsapp': r.WhatsApp,
             'email': r.Email,
             'cep': r.CEP,
@@ -245,7 +232,8 @@ function prepararEdicao(idOriginal) {
             'logradouro': r.Rua,
             'numero': r.Numero
         };
- 
+
+        // Preenche cada caixa do formulário usando o ID do HTML
         for (let idHtml in mapa) {
             const el = document.getElementById(idHtml);
             if (el) {
