@@ -161,14 +161,19 @@ function atualizarMonitor() {
         let contagemComData = 0;
         const hoje = new Date();
 
+        // --- BLOCO DA MÉDIA DE IDADE PRESERVADO ---
         registros.forEach(r => {
+            // Tenta todas as variações possíveis de nome de coluna de data
             const dataNascRaw = r.Data_Nascimento || r.data_nascimento || r.nascimento;
+            
             if (dataNascRaw) {
                 const nasc = new Date(dataNascRaw);
                 if (!isNaN(nasc.getTime())) {
                     let idade = hoje.getFullYear() - nasc.getFullYear();
                     const m = hoje.getMonth() - nasc.getMonth();
-                    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+                    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
+                        idade--;
+                    }
                     if (idade >= 0 && idade < 120) {
                         somaIdades += idade;
                         contagemComData++;
@@ -179,17 +184,18 @@ function atualizarMonitor() {
 
         const media = contagemComData > 0 ? Math.round(somaIdades / contagemComData) : 0;
         const labelMedia = document.getElementById('media-idade');
-        if(labelMedia) labelMedia.innerText = "Média Idade: " + media;
+        if(labelMedia) labelMedia.innerText = media; 
+        // ------------------------------------------
 
         let html = "";
-        // Criando a lista de nomes
+        // Criar a lista visual para o monitor
         registros.reverse().slice(0, 20).forEach(r => {
-            const vNome = r.Nome || r.nome || "Sem Nome";
+            // AJUSTE PARA NOME COMPLETO
+            const vNome = r.Nome_Completo || r.Nome || "Sem Nome";
             const vBairro = r.Bairro || r.bairro || "---";
             const vCPF = r.CPF || r.cpf || "---";
-            const vNasc = r.Data_Nascimento || r.data_nascimento || "---";
+            const vNasc = r.Data_Nascimento || r.data_nascimento || r.nascimento || "---";
 
-            // AQUI ESTÁ A CORREÇÃO: Adicionamos o nome 'prepararEdicao' no clique
             html += `<div class="item-lista" onclick="prepararEdicao('${r.id}')" style="border-bottom:1px solid #eee; padding:10px; cursor:pointer;">
                 <strong>${vNome}</strong> - ${vBairro}<br>
                 <small>CPF: ${vCPF} | Nasc: ${vNasc}</small></div>`;
