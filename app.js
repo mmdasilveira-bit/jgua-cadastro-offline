@@ -53,15 +53,39 @@ function autenticar() {
     store.get(cod).onsuccess = (e) => {
         const u = e.target.result;
         if (u) {
+            // Preenche as etiquetas de identificação
             document.getElementById('label-perfil').innerText = u.perfil;
             document.getElementById('label-nome-user').innerText = u.nome;
+            
+            // Esconde o login e mostra o conteúdo
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
-            if(u.perfil === "CADASTRADOR") document.getElementById('monitor').classList.add('hidden');
+            
+            // --- LÓGICA DE MENUS POR PERFIL ---
+            
+            // 1. Monitor (Lista de nomes): Esconde apenas para CADASTRADOR
+            if (u.perfil === "CADASTRADOR") {
+                document.getElementById('monitor').classList.add('hidden');
+            } else {
+                document.getElementById('monitor').classList.remove('hidden');
+            }
+
+            // 2. Gestão de Integrantes (Criar novos códigos): Apenas para GESTOR
+            const secaoAdmin = document.getElementById('secao-admin-users');
+            if (u.perfil === "GESTOR") {
+                secaoAdmin?.classList.remove('hidden');
+            } else {
+                secaoAdmin?.classList.add('hidden');
+            }
+
+            // 3. Permissões Especiais (Avaliador/Coordenador)
+            // Aqui você pode adicionar condições específicas para VALIDADOR ou COORDENADOR futuramente
+            
             sincronizarDadosDaNuvem(); 
-            atualizarMonitor();
             listarUsuarios();
-        } else { alert("Código inválido!"); }
+        } else { 
+            alert("Código de acesso não encontrado!"); 
+        }
     };
 }
 
