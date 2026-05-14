@@ -137,7 +137,7 @@ function abrirModalAlterarCodigo() {
     document.getElementById('alt-codigo-atual').value = '';
     document.getElementById('alt-codigo-novo').value = '';
     document.getElementById('alt-codigo-confirma').value = '';
-    document.getElementById('modal-alterar').classList.remove('hidden');
+    document.getElementById('modal-alterar').classList.add('aberto');
 }
 
 function confirmarAlterarCodigo() {
@@ -172,7 +172,7 @@ function confirmarAlterarCodigo() {
 
         alert(`Código alterado com sucesso!\n\nSeu novo código é: ${novo}\n\nGuarde em local seguro.`);
         usuarioLogado = usuarioAtualizado;
-        document.getElementById('modal-alterar').classList.add('hidden');
+        document.getElementById('modal-alterar').classList.remove('aberto');
     };
 }
 
@@ -182,7 +182,7 @@ function confirmarAlterarCodigo() {
 function abrirModalEsqueci() {
     document.getElementById('esqueci-email').value = '';
     document.getElementById('esqueci-resultado').innerHTML = '';
-    document.getElementById('modal-esqueci').classList.remove('hidden');
+    document.getElementById('modal-esqueci').classList.add('aberto');
 }
 
 function buscarPorEmail() {
