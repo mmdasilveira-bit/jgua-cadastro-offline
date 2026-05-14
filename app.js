@@ -1,10 +1,11 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec";
 let db;
+let usuarioLogado = null; // guarda o usuário da sessão atual
 
 // =====================================================================
 // ABERTURA DO BANCO LOCAL
 // =====================================================================
-const request = indexedDB.open("JGUA_FINAL_DB", 22);
+const request = indexedDB.open("JGUA_FINAL_DB", 23);
 
 request.onerror = () => alert("Erro ao iniciar o banco de dados. Tente recarregar a página.");
 
@@ -20,14 +21,11 @@ request.onupgradeneeded = (e) => {
 
 request.onsuccess = (e) => {
     db = e.target.result;
-    // Ao abrir o app, primeiro sincroniza os usuários da nuvem,
-    // depois libera o botão de login
     sincronizarUsuariosDaNuvem();
 };
 
 // =====================================================================
 // SINCRONIZA USUÁRIOS DA NUVEM → salva localmente
-// Chamado sempre que o app abre, em qualquer dispositivo
 // =====================================================================
 async function sincronizarUsuariosDaNuvem() {
     const btn = document.querySelector('button[onclick="autenticar()"]');
@@ -40,38 +38,28 @@ async function sincronizarUsuariosDaNuvem() {
         if (Array.isArray(usuarios) && usuarios.length > 0) {
             const tx = db.transaction("usuarios", "readwrite");
             const store = tx.objectStore("usuarios");
-
-            // Garante que o GESTOR MESTRE sempre existe
-            const semestre = { codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" };
-            store.put(semestre);
-
-            usuarios.forEach(u => {
-                if (u.codigo) store.put(u);
-            });
-
+            store.clear();
+            usuarios.forEach(u => { if (u.codigo) store.put(u); });
             tx.oncomplete = () => {
-                console.log("Usuários sincronizados da nuvem.");
-                liberarLogin();
+                // Garante que o GESTOR MESTRE sempre existe localmente
+                garantirUsuarioPadrao();
             };
         } else {
-            // Nuvem vazia ou erro: garante pelo menos o usuário padrão local
             garantirUsuarioPadrao();
         }
     } catch (err) {
-        console.warn("Sem conexão ou erro na nuvem. Usando banco local.", err);
-        // Sem internet: usa o banco local (usuários já sincronizados antes)
+        console.warn("Sem conexão. Usando banco local.", err);
         garantirUsuarioPadrao();
     }
 }
 
-// Garante o usuário padrão 1234 caso a nuvem não responda
 function garantirUsuarioPadrao() {
     const tx = db.transaction("usuarios", "readwrite");
     const store = tx.objectStore("usuarios");
     const check = store.get("1234");
     check.onsuccess = (e) => {
         if (!e.target.result) {
-            store.put({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
+            store.put({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR", email: "" });
         }
         liberarLogin();
     };
@@ -116,6 +104,7 @@ function autenticar() {
     db.transaction("usuarios", "readonly").objectStore("usuarios").get(cod).onsuccess = (e) => {
         const u = e.target.result;
         if (u) {
+            usuarioLogado = u;
             document.getElementById('label-perfil').innerText = u.perfil;
             document.getElementById('label-nome-user').innerText = u.nome;
             document.getElementById('secao-login').classList.add('hidden');
@@ -142,10 +131,164 @@ function autenticar() {
 }
 
 // =====================================================================
+// MODAL — ALTERAR CÓDIGO (o próprio usuário troca o seu)
+// =====================================================================
+function abrirModalAlterarCodigo() {
+    document.getElementById('alt-codigo-atual').value = '';
+    document.getElementById('alt-codigo-novo').value = '';
+    document.getElementById('alt-codigo-confirma').value = '';
+    document.getElementById('modal-alterar').classList.remove('hidden');
+}
+
+function confirmarAlterarCodigo() {
+    const atual    = document.getElementById('alt-codigo-atual').value.trim();
+    const novo     = document.getElementById('alt-codigo-novo').value.trim();
+    const confirma = document.getElementById('alt-codigo-confirma').value.trim();
+
+    if (!atual || !novo || !confirma) return alert("Preencha todos os campos.");
+    if (atual !== usuarioLogado.codigo) return alert("Código atual incorreto.");
+    if (novo.length < 4) return alert("O novo código deve ter pelo menos 4 caracteres.");
+    if (novo !== confirma) return alert("O novo código e a confirmação não coincidem.");
+
+    // Monta o objeto atualizado (mantém todos os dados, só troca o código)
+    const usuarioAtualizado = { ...usuarioLogado, codigo: novo };
+
+    // 1. Remove o registro antigo (chave mudou) e insere o novo localmente
+    const tx = db.transaction("usuarios", "readwrite");
+    const store = tx.objectStore("usuarios");
+    store.delete(usuarioLogado.codigo);
+    store.put(usuarioAtualizado);
+
+    tx.oncomplete = () => {
+        // 2. Envia para a nuvem: exclui o antigo e salva o novo
+        fetch(URL_PLANILHA, {
+            method: 'POST', mode: 'no-cors',
+            body: JSON.stringify({ acao: "excluirUsuario", codigo: usuarioLogado.codigo })
+        });
+        fetch(URL_PLANILHA, {
+            method: 'POST', mode: 'no-cors',
+            body: JSON.stringify({ acao: "salvarUsuario", ...usuarioAtualizado })
+        });
+
+        alert(`Código alterado com sucesso!\n\nSeu novo código é: ${novo}\n\nGuarde em local seguro.`);
+        usuarioLogado = usuarioAtualizado;
+        document.getElementById('modal-alterar').classList.add('hidden');
+    };
+}
+
+// =====================================================================
+// MODAL — ESQUECI MEU CÓDIGO (busca por e-mail)
+// =====================================================================
+function abrirModalEsqueci() {
+    document.getElementById('esqueci-email').value = '';
+    document.getElementById('esqueci-resultado').innerHTML = '';
+    document.getElementById('modal-esqueci').classList.remove('hidden');
+}
+
+function buscarPorEmail() {
+    const emailDigitado = document.getElementById('esqueci-email').value.trim().toLowerCase();
+    const resultado = document.getElementById('esqueci-resultado');
+
+    if (!emailDigitado) return alert("Digite seu e-mail.");
+
+    db.transaction("usuarios", "readonly").objectStore("usuarios").getAll().onsuccess = (e) => {
+        const usuarios = e.target.result;
+        const encontrado = usuarios.find(u =>
+            u.email && u.email.trim().toLowerCase() === emailDigitado
+        );
+
+        if (encontrado) {
+            resultado.innerHTML = `
+                <div style="background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:15px; text-align:center;">
+                    <p style="margin:0 0 6px; font-size:0.9em; color:#555;">Olá, <strong>${encontrado.nome}</strong>! Seu código é:</p>
+                    <p style="font-size:2em; font-weight:bold; letter-spacing:4px; color:#1b5e20; margin:0;">${encontrado.codigo}</p>
+                </div>`;
+        } else {
+            resultado.innerHTML = `
+                <div style="background:#fff3e0; border:1px solid #ffcc80; border-radius:8px; padding:12px; text-align:center; font-size:0.9em; color:#e65100;">
+                    E-mail não encontrado. Verifique o endereço ou entre em contato com o Gestor.
+                </div>`;
+        }
+    };
+}
+
+// =====================================================================
+// GESTÃO DE USUÁRIOS
+// =====================================================================
+function criarUsuario() {
+    const nome   = document.getElementById('novo-nome').value.trim();
+    const email  = document.getElementById('novo-email').value.trim().toLowerCase();
+    const codigo = document.getElementById('novo-codigo').value.trim();
+    const perfil = document.getElementById('novo-perfil').value;
+
+    if (!nome || !codigo) return alert("Preencha pelo menos o nome e o código.");
+    if (codigo.length < 4) return alert("O código deve ter pelo menos 4 caracteres.");
+
+    const usuario = { codigo, nome, perfil, email };
+
+    // Salva na nuvem
+    fetch(URL_PLANILHA, {
+        method: 'POST', mode: 'no-cors',
+        body: JSON.stringify({ acao: "salvarUsuario", ...usuario })
+    });
+
+    // Salva localmente
+    const tx = db.transaction("usuarios", "readwrite");
+    tx.objectStore("usuarios").put(usuario);
+    tx.oncomplete = () => {
+        alert(`Acesso criado para ${nome}!\n\nCódigo: ${codigo}\n\nEle já pode entrar em qualquer dispositivo.`);
+        document.getElementById('novo-nome').value = '';
+        document.getElementById('novo-email').value = '';
+        document.getElementById('novo-codigo').value = '';
+        listarUsuarios();
+    };
+}
+
+function excluirUsuario(codigo) {
+    if (!confirm("Excluir este acesso?")) return;
+
+    fetch(URL_PLANILHA, {
+        method: 'POST', mode: 'no-cors',
+        body: JSON.stringify({ acao: "excluirUsuario", codigo })
+    });
+
+    db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(codigo).onsuccess = () => listarUsuarios();
+}
+
+function listarUsuarios() {
+    const listaDiv = document.getElementById('lista-usuarios');
+    if (!listaDiv) return;
+    db.transaction("usuarios", "readonly").objectStore("usuarios").getAll().onsuccess = (e) => {
+        const usuarios = e.target.result;
+        if (usuarios.length === 0) {
+            listaDiv.innerHTML = "<p style='color:#999; font-size:0.9em;'>Nenhum integrante cadastrado.</p>";
+            return;
+        }
+        let html = `<table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:0.85em;">
+            <tr style="background:#f0f0f0;">
+                <th style="padding:8px; text-align:left;">Nome</th>
+                <th style="padding:8px; text-align:left;">Perfil</th>
+                <th style="padding:8px; text-align:left;">Código</th>
+                <th style="padding:8px;"></th>
+            </tr>`;
+        usuarios.forEach(u => {
+            const ehMestre = u.codigo === '1234';
+            html += `<tr style="border-bottom:1px solid #eee;">
+                <td style="padding:8px;">${u.nome}${u.email ? `<br><small style="color:#999;">${u.email}</small>` : ''}</td>
+                <td style="padding:8px;"><span style="background:#e3f2fd; color:#1565c0; padding:2px 8px; border-radius:10px; font-size:0.8em;">${u.perfil}</span></td>
+                <td style="padding:8px; font-family:monospace; font-weight:bold;">${u.codigo}</td>
+                <td style="padding:8px;">${ehMestre ? '' : `<button onclick="excluirUsuario('${u.codigo}')" style="background:#dc3545;color:white;border:none;border-radius:4px;padding:4px 8px;cursor:pointer;font-size:0.8em;">Excluir</button>`}</td>
+            </tr>`;
+        });
+        listaDiv.innerHTML = html + "</table>";
+    };
+}
+
+// =====================================================================
 // SALVAR CADASTRO
 // =====================================================================
 async function salvar() {
-    const editId = document.getElementById('edit-id').value;
+    const editId   = document.getElementById('edit-id').value;
     const nomeComp = document.getElementById('nome_completo').value.trim();
     const cpfLimpo = document.getElementById('cpf').value.replace(/\D/g, '');
     if (!nomeComp || !cpfLimpo) return alert("Nome e CPF são obrigatórios!");
@@ -170,7 +313,7 @@ async function salvar() {
         "Rua": document.getElementById('logradouro').value,
         "Numero": document.getElementById('numero').value,
         "Canal_Preferencial": document.getElementById('origem').value,
-        "Atualizado_Por": document.getElementById('label-nome-user').innerText,
+        "Atualizado_Por": usuarioLogado ? usuarioLogado.nome : "SISTEMA",
         "Atualizado_Em": new Date().toLocaleString()
     };
 
@@ -191,79 +334,6 @@ function verificarCPFDuplicado(cpf) {
             resolve(e.target.result.some(r => r.CPF === cpf));
         };
     });
-}
-
-// =====================================================================
-// GESTÃO DE USUÁRIOS — salva na nuvem E localmente
-// =====================================================================
-function criarUsuario() {
-    const nome   = document.getElementById('novo-nome').value.trim();
-    const codigo = document.getElementById('novo-codigo').value.trim();
-    const perfil = document.getElementById('novo-perfil').value;
-    if (!nome || !codigo) return alert("Preencha o nome e o código.");
-
-    const usuario = { codigo, nome, perfil };
-
-    // 1. Salva na nuvem (Google Sheets)
-    fetch(URL_PLANILHA, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify({ acao: "salvarUsuario", ...usuario })
-    });
-
-    // 2. Salva no banco local também
-    const tx = db.transaction("usuarios", "readwrite");
-    tx.objectStore("usuarios").put(usuario);
-    tx.oncomplete = () => {
-        alert(`Acesso criado para ${nome}!\n\nO código "${codigo}" já pode ser usado em qualquer celular.`);
-        document.getElementById('novo-nome').value = '';
-        document.getElementById('novo-codigo').value = '';
-        listarUsuarios();
-    };
-}
-
-function excluirUsuario(codigo) {
-    if (!confirm("Excluir este acesso?")) return;
-
-    // 1. Remove da nuvem
-    fetch(URL_PLANILHA, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify({ acao: "excluirUsuario", codigo })
-    });
-
-    // 2. Remove do banco local
-    db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(codigo).onsuccess = () => listarUsuarios();
-}
-
-function listarUsuarios() {
-    const listaDiv = document.getElementById('lista-usuarios');
-    if (!listaDiv) return;
-    db.transaction("usuarios", "readonly").objectStore("usuarios").getAll().onsuccess = (e) => {
-        const usuarios = e.target.result;
-        if (usuarios.length === 0) {
-            listaDiv.innerHTML = "<p style='color:#999; font-size:0.9em;'>Nenhum integrante cadastrado.</p>";
-            return;
-        }
-        let html = `<table style="width:100%; border-collapse:collapse; margin-top:10px; font-size:0.9em;">
-            <tr style="background:#f0f0f0;">
-                <th style="padding:8px; text-align:left;">Nome</th>
-                <th style="padding:8px; text-align:left;">Perfil</th>
-                <th style="padding:8px; text-align:left;">Código</th>
-                <th style="padding:8px;"></th>
-            </tr>`;
-        usuarios.forEach(u => {
-            const ehMestre = u.codigo === '1234';
-            html += `<tr style="border-bottom:1px solid #eee;">
-                <td style="padding:8px;">${u.nome}</td>
-                <td style="padding:8px;"><span style="background:#e3f2fd; color:#1565c0; padding:2px 8px; border-radius:10px; font-size:0.85em;">${u.perfil}</span></td>
-                <td style="padding:8px; font-family:monospace; font-weight:bold;">${u.codigo}</td>
-                <td style="padding:8px;">${ehMestre ? '' : `<button onclick="excluirUsuario('${u.codigo}')" style="background:#dc3545; color:white; border:none; border-radius:4px; padding:4px 10px; cursor:pointer; font-size:0.85em;">Excluir</button>`}</td>
-            </tr>`;
-        });
-        html += "</table>";
-        listaDiv.innerHTML = html;
-    };
 }
 
 // =====================================================================
