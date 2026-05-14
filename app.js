@@ -1,27 +1,77 @@
 const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbziH71TxS7YCz_-b8SjbjtXi1dLO0TTYmAHJF5vBHUmMrmo-ujJxHif0aY3ZOQduv552Q/exec";
 let db;
 
-const request = indexedDB.open("JGUA_FINAL_DB", 20);
+// =====================================================================
+// ABERTURA DO BANCO - Compatível com Chrome, Safari, Firefox e Edge
+// =====================================================================
+const request = indexedDB.open("JGUA_FINAL_DB", 21); // versão 21 para forçar upgrade em todos os dispositivos
 
-request.onsuccess = (e) => {
-    db = e.target.result;
-    console.log("Banco pronto no Chrome.");
-    const btn = document.querySelector('button[onclick="autenticar()"]');
-    if (btn) {
-        btn.disabled = false;
-        btn.innerText = "Acessar Sistema";
-    }
+request.onerror = (e) => {
+    console.error("Erro ao abrir banco:", e);
+    alert("Erro ao iniciar o banco de dados. Tente recarregar a página.");
 };
 
 request.onupgradeneeded = (e) => {
     db = e.target.result;
-    if (!db.objectStoreNames.contains("cadastros")) db.createObjectStore("cadastros", { keyPath: "id" });
+    if (!db.objectStoreNames.contains("cadastros")) {
+        db.createObjectStore("cadastros", { keyPath: "id" });
+    }
     if (!db.objectStoreNames.contains("usuarios")) {
         const userStore = db.createObjectStore("usuarios", { keyPath: "codigo" });
         userStore.add({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
     }
 };
 
+request.onsuccess = (e) => {
+    db = e.target.result;
+    console.log("Banco pronto.");
+
+    // CORREÇÃO PRINCIPAL: Garante que o usuário padrão 1234 existe
+    // em QUALQUER dispositivo (iPhone, Android, PC novo, etc.)
+    garantirUsuarioPadrao();
+};
+
+// =====================================================================
+// GARANTE QUE O USUÁRIO 1234 EXISTE EM QUALQUER DISPOSITIVO
+// =====================================================================
+function garantirUsuarioPadrao() {
+    try {
+        const tx = db.transaction("usuarios", "readwrite");
+        const store = tx.objectStore("usuarios");
+        const check = store.get("1234");
+
+        check.onsuccess = (e) => {
+            if (!e.target.result) {
+                // Usuário não existe neste dispositivo — cria agora
+                store.put({ codigo: "1234", nome: "GESTOR MESTRE", perfil: "GESTOR" });
+                console.log("Usuário padrão criado neste dispositivo.");
+            }
+            // Libera o botão de acesso
+            habilitarBotaoLogin();
+        };
+
+        check.onerror = () => {
+            // Mesmo se der erro na verificação, libera o botão
+            habilitarBotaoLogin();
+        };
+
+    } catch (err) {
+        console.error("Erro ao garantir usuário padrão:", err);
+        habilitarBotaoLogin();
+    }
+}
+
+function habilitarBotaoLogin() {
+    const btn = document.querySelector('button[onclick="autenticar()"]');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerText = "Acessar Sistema";
+    }
+}
+
+// =====================================================================
+// SINCRONIZAR DADOS DA NUVEM
+// =====================================================================
 async function sincronizarDadosDaNuvem() {
     try {
         const response = await fetch(URL_PLANILHA + "?t=" + new Date().getTime());
@@ -32,86 +82,87 @@ async function sincronizarDadosDaNuvem() {
         const store = tx.objectStore("cadastros");
         store.clear();
 
-        registrosNuvem.forEach(reg => { 
-            const idReal = reg.Cadastrador_ID || reg.id; 
+        registrosNuvem.forEach(reg => {
+            const idReal = reg.Cadastrador_ID || reg.id;
             if (idReal) {
                 reg.id = String(idReal);
-                store.put(reg); 
+                store.put(reg);
             }
         });
         tx.oncomplete = () => atualizarMonitor();
-    } catch (e) { console.error("Erro na nuvem:", e); }
+    } catch (e) {
+        console.error("Erro ao sincronizar com a nuvem:", e);
+    }
 }
 
+// =====================================================================
+// AUTENTICAÇÃO
+// =====================================================================
 function autenticar() {
-    const cod = document.getElementById('input-codigo').value;
-    if (!db) return alert("Banco carregando...");
+    const cod = document.getElementById('input-codigo').value.trim();
+    if (!db) return alert("Banco de dados ainda carregando. Aguarde um momento e tente novamente.");
+    if (!cod) return alert("Digite seu código de acesso.");
 
     const tx = db.transaction("usuarios", "readonly");
     const store = tx.objectStore("usuarios");
-    
+
     store.get(cod).onsuccess = (e) => {
         const u = e.target.result;
         if (u) {
-            // Identificação do Usuário
             document.getElementById('label-perfil').innerText = u.perfil;
             document.getElementById('label-nome-user').innerText = u.nome;
-            
-            // Troca de tela: Login -> Sistema
+
             document.getElementById('secao-login').classList.add('hidden');
             document.getElementById('conteudo').classList.remove('hidden');
-            
-            // --- CONTROLE DE VISIBILIDADE POR PERFIL ---
+
             const monitor = document.getElementById('monitor');
             const secaoAdmin = document.getElementById('secao-admin-users');
 
-            // 1. GESTOR: Vê absolutamente tudo
+            // Esconde tudo primeiro
+            monitor.classList.add('hidden');
+            secaoAdmin.classList.add('hidden');
+
+            // Libera conforme o perfil
             if (u.perfil === "GESTOR") {
-                monitor?.classList.remove('hidden');
-                secaoAdmin?.classList.remove('hidden');
-            } 
-            // 2. CADASTRADOR: Vê apenas o formulário (esconde o monitor e admin)
-            else if (u.perfil === "CADASTRADOR") {
-                monitor?.classList.add('hidden');
-                secaoAdmin?.classList.add('hidden');
-            }
-            // 3. OUTROS (AVALIADOR, COORDENADOR, VALIDADOR): Vê formulário e monitor
-            else {
-                monitor?.classList.remove('hidden');
-                secaoAdmin?.classList.add('hidden');
+                monitor.classList.remove('hidden');
+                secaoAdmin.classList.remove('hidden');
+            } else if (u.perfil === "CADASTRADOR") {
+                // Só vê o formulário — monitor e admin ficam escondidos
+            } else {
+                // VALIDADOR, COORDENADOR, etc. — vê formulário e monitor
+                monitor.classList.remove('hidden');
             }
 
-            sincronizarDadosDaNuvem(); 
+            sincronizarDadosDaNuvem();
             listarUsuarios();
-        } else { 
-            alert("Código de acesso inválido!"); 
+
+        } else {
+            alert("Código de acesso inválido!");
         }
     };
-    // Garante que as seções fiquem escondidas por padrão antes da lógica de perfil rodar
-document.getElementById('monitor').classList.add('hidden');
-document.getElementById('secao-admin-users').classList.add('hidden');
 }
 
+// =====================================================================
+// SALVAR CADASTRO
+// =====================================================================
 async function salvar() {
     const editId = document.getElementById('edit-id').value;
     const nomeComp = document.getElementById('nome_completo').value.trim();
-    const cpfLimpo = document.getElementById('cpf').value.replace(/\D/g, ''); // Remove pontos e traços para comparar
+    const cpfLimpo = document.getElementById('cpf').value.replace(/\D/g, '');
 
     if (!nomeComp || !cpfLimpo) return alert("Nome e CPF são obrigatórios!");
 
-    // --- NOVA TRAVA DE DUPLICIDADE ---
-    // Se não for uma edição de um cadastro existente, verifica se o CPF já existe
     if (!editId) {
         const existe = await verificarCPFDuplicado(document.getElementById('cpf').value);
         if (existe) {
             alert("ERRO: Este CPF já está cadastrado no sistema!");
-            return; // Interrompe o salvamento
+            return;
         }
     }
 
     const registro = {
         "Cadastrador_ID": editId || "CAD-" + new Date().getTime(),
-        "Status": "Ativo", 
+        "Status": "Ativo",
         "Perfil": document.getElementById('tipo').value,
         "Nome_Completo": nomeComp,
         "CPF": document.getElementById('cpf').value,
@@ -131,33 +182,40 @@ async function salvar() {
     try {
         fetch(URL_PLANILHA, { method: 'POST', mode: 'no-cors', body: JSON.stringify(registro) });
         const tx = db.transaction("cadastros", "readwrite");
-        const registroLocal = {...registro, id: String(registro.Cadastrador_ID)};
+        const registroLocal = { ...registro, id: String(registro.Cadastrador_ID) };
         tx.objectStore("cadastros").put(registroLocal);
         tx.oncomplete = () => {
             alert("Cadastro realizado com sucesso!");
-            location.reload(); 
+            location.reload();
         };
-    } catch (e) { alert("Erro ao conectar com a nuvem."); }
+    } catch (e) {
+        alert("Erro ao conectar com a nuvem.");
+    }
 }
 
-// Função auxiliar para buscar o CPF no banco local
+// =====================================================================
+// VERIFICAR CPF DUPLICADO
+// =====================================================================
 function verificarCPFDuplicado(cpfParaChecar) {
     return new Promise((resolve) => {
         const tx = db.transaction("cadastros", "readonly");
         const store = tx.objectStore("cadastros");
-        const request = store.getAll();
-
-        request.onsuccess = (e) => {
+        const req = store.getAll();
+        req.onsuccess = (e) => {
             const todos = e.target.result;
             const duplicado = todos.some(r => r.CPF === cpfParaChecar);
             resolve(duplicado);
         };
+        req.onerror = () => resolve(false);
     });
 }
 
+// =====================================================================
+// MONITOR / BUSCA
+// =====================================================================
 function atualizarMonitor() {
     if (!db || !document.getElementById('contador-total')) return;
-    
+
     const termo = document.getElementById('input-busca')?.value.toLowerCase() || "";
     db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
         const registros = e.target.result;
@@ -166,9 +224,9 @@ function atualizarMonitor() {
         const hoje = new Date();
         let html = "";
 
-        const filtrados = registros.filter(r => 
-            (r.Nome_Completo || "").toLowerCase().includes(termo) || 
-            (r.CPF || "").includes(termo) || 
+        const filtrados = registros.filter(r =>
+            (r.Nome_Completo || "").toLowerCase().includes(termo) ||
+            (r.CPF || "").includes(termo) ||
             (r.Bairro || "").toLowerCase().includes(termo)
         );
 
@@ -185,12 +243,15 @@ function atualizarMonitor() {
                 <strong>${r.Nome_Completo || "Sem Nome"}</strong> - ${r.Bairro || "---"}<br>
                 <small>CPF: ${r.CPF || "---"} | Nasc: ${vNasc}</small></div>`;
         });
-        
+
         document.getElementById('media-idade').innerText = contagemComData > 0 ? Math.round(somaIdades / contagemComData) : 0;
         document.getElementById('lista-cadastros').innerHTML = html || "Vazio.";
     };
 }
 
+// =====================================================================
+// EDIÇÃO DE CADASTRO
+// =====================================================================
 function prepararEdicao(idOriginal) {
     db.transaction("cadastros", "readonly").objectStore("cadastros").get(String(idOriginal)).onsuccess = (e) => {
         const r = e.target.result;
@@ -222,10 +283,14 @@ function prepararEdicao(idOriginal) {
     };
 }
 
+// =====================================================================
+// GESTÃO DE USUÁRIOS
+// =====================================================================
 function criarUsuario() {
     const nome = document.getElementById('novo-nome').value.trim();
     const codigo = document.getElementById('novo-codigo').value.trim();
     const perfil = document.getElementById('novo-perfil').value;
+    if (!nome || !codigo) return alert("Preencha o nome e o código.");
     const tx = db.transaction("usuarios", "readwrite");
     tx.objectStore("usuarios").put({ codigo, nome, perfil });
     tx.oncomplete = () => { alert("Acesso Criado!"); listarUsuarios(); };
@@ -233,7 +298,7 @@ function criarUsuario() {
 
 function listarUsuarios() {
     const listaDiv = document.getElementById('lista-usuarios');
-    if(!listaDiv) return;
+    if (!listaDiv) return;
     db.transaction("usuarios", "readonly").objectStore("usuarios").getAll().onsuccess = (e) => {
         let html = "<table>";
         e.target.result.forEach(u => {
@@ -245,21 +310,44 @@ function listarUsuarios() {
 }
 
 function excluirU(c) {
-    if(confirm("Excluir?")) {
+    if (confirm("Excluir este acesso?")) {
         db.transaction("usuarios", "readwrite").objectStore("usuarios").delete(c).onsuccess = () => listarUsuarios();
     }
 }
 
 function cancelarEdicao() { location.reload(); }
 
+// =====================================================================
+// BUSCA DE CEP
+// =====================================================================
 async function buscarCEP() {
     let cep = document.getElementById('cep').value.replace(/\D/g, '');
     if (cep.length === 8) {
-        fetch(`https://viacep.com.br/ws/${cep}/json/`).then(res => res.json()).then(d => {
-            if(!d.erro) {
+        try {
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const d = await res.json();
+            if (!d.erro) {
                 document.getElementById('logradouro').value = d.logradouro || "";
                 document.getElementById('bairro').value = d.bairro || "";
             }
-        });
+        } catch (e) {
+            console.error("Erro ao buscar CEP:", e);
+        }
     }
+}
+
+// =====================================================================
+// EXPORTAR DADOS
+// =====================================================================
+function exportarDados() {
+    db.transaction("cadastros", "readonly").objectStore("cadastros").getAll().onsuccess = (e) => {
+        const dados = e.target.result;
+        const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "jgua_export_" + new Date().toISOString().split('T')[0] + ".json";
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 }
